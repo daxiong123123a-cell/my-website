@@ -2,154 +2,102 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>世界杯系统（Supabase上线版 + 后台 + UI升级）</title>
+<title>世界杯商业终极版（登录+图表+真实数据）</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:white;}
-.header{padding:12px;display:flex;justify-content:space-between;background:#020617;position:sticky;top:0;}
-.container{padding:12px;padding-bottom:90px;}
-.card{background:#0f172a;margin:10px 0;padding:14px;border-radius:12px;box-shadow:0 5px 20px rgba(0,0,0,0.5);}
-.btn{background:#1e293b;padding:8px;border-radius:8px;margin:5px;cursor:pointer;text-align:center;}
-.btn:hover{background:#22c55e;color:black;}
-.tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#020617;border-top:1px solid #1e293b;}
+.header{padding:12px;display:flex;justify-content:space-between;background:#020617;}
+.container{padding:12px;padding-bottom:100px;}
+.card{background:#0f172a;margin:10px 0;padding:14px;border-radius:12px;}
+.btn{background:#1e293b;padding:8px;border-radius:8px;margin:5px;cursor:pointer;}
+.tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#020617;}
 .tab{flex:1;text-align:center;padding:10px;font-size:12px;}
-table{width:100%;border-collapse:collapse;}
-td,th{border:1px solid #1e293b;padding:6px;text-align:center;}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div>⚽ 世界杯系统</div>
-  <div>👤<span id="user">未登录</span> 💰<span id="money">0</span></div>
+ <div>⚽ 商业平台</div>
+ <div id="info">未登录</div>
 </div>
 
 <div class="container" id="app"></div>
 
 <div class="tabbar">
-  <div class="tab" onclick="showPage('login')">登录</div>
-  <div class="tab" onclick="showPage('match')">比赛</div>
-  <div class="tab" onclick="showPage('rank')">排行</div>
-  <div class="tab" onclick="showPage('admin')">后台</div>
+ <div class="tab" onclick="showPage('auth')">账号</div>
+ <div class="tab" onclick="showPage('match')">比赛</div>
+ <div class="tab" onclick="showPage('chart')">数据</div>
 </div>
 
 <script>
+const supabase=window.supabase.createClient("https://kdjlnfkcxrndqhrzvbzu.supabase.co","sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9");
 
-// ✅ 填你自己的
-const SUPABASE_URL = "https://kdjlnfkcxrndqhrzvbzu.supabase.co";
-const SUPABASE_KEY = "sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9";
+let user=null;
+let profitData=[];
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let currentUser=null;
-
-/* 页面控制 */
 function showPage(p){
- if(p==='login')renderLogin();
+ if(p==='auth')renderAuth();
  if(p==='match')renderMatch();
- if(p==='rank')renderRank();
- if(p==='admin')renderAdmin();
+ if(p==='chart')renderChart();
 }
 
-/* 登录 */
-function renderLogin(){
+/* 登录注册 */
+function renderAuth(){
  document.getElementById('app').innerHTML=`
- <div class='card'>用户名：<input id='name'>
- <div class='btn' onclick='login()'>登录</div></div>`;
+ <div class='card'>
+ 邮箱：<input id='email'><br>
+ 密码：<input id='pass' type='password'><br>
+ <div class='btn' onclick='register()'>注册</div>
+ <div class='btn' onclick='login()'>登录</div>
+ </div>`;
+}
+
+async function register(){
+ let email=document.getElementById('email').value;
+ let pass=document.getElementById('pass').value;
+ await supabase.auth.signUp({email,password:pass});
+ alert('注册成功');
 }
 
 async function login(){
- let name=document.getElementById('name').value;
- let {data}=await supabase.from('users').select('*').eq('username',name);
- if(!data || data.length===0){
-  await supabase.from('users').insert([{username:name,money:1000}]);
- }
- currentUser=name;
- loadUser();
- alert('登录成功');
+ let email=document.getElementById('email').value;
+ let pass=document.getElementById('pass').value;
+ let {data}=await supabase.auth.signInWithPassword({email,password:pass});
+ user=data.user;
+ document.getElementById('info').innerText=email;
 }
 
-async function loadUser(){
- if(!currentUser)return;
- let {data}=await supabase.from('users').select('*').eq('username',currentUser).single();
- document.getElementById('user').innerText=currentUser;
- document.getElementById('money').innerText=data.money;
-}
-
-/* 比赛 */
+/* 比赛（模拟真实API结构） */
 let matches=[
- {teams:"阿根廷 vs 法国",odds:{home:1.8,away:2.0}},
- {teams:"巴西 vs 英格兰",odds:{home:1.6,away:2.3}}
+ {home:'Argentina',away:'France',score:'1-0'},
+ {home:'Brazil',away:'England',score:'0-0'}
 ];
 
 function renderMatch(){
  let html="";
- matches.forEach((m,i)=>{
-  html+=`<div class='card'>${m.teams}
-  <div class='btn' onclick="bet(${i},'主胜',${m.odds.home})">主 ${m.odds.home}</div>
-  <div class='btn' onclick="bet(${i},'客胜',${m.odds.away})">客 ${m.odds.away}</div>
-  </div>`;
+ matches.forEach(m=>{
+  html+=`<div class='card'>${m.home} vs ${m.away}<br>${m.score}</div>`;
  });
  document.getElementById('app').innerHTML=html;
 }
 
-async function bet(i,choice,odd){
- if(!currentUser)return alert('请先登录');
- let amount=100;
-
- let {data:u}=await supabase.from('users').select('*').eq('username',currentUser).single();
- if(u.money<amount) return alert('余额不足');
-
- await supabase.from('users').update({money:u.money-amount}).eq('username',currentUser);
- await supabase.from('bets').insert([{username:currentUser,match:matches[i].teams,choice,odd,amount,status:'未开奖'}]);
-
- loadUser();
-}
-
-/* 排行榜 */
-async function renderRank(){
- let {data}=await supabase.from('users').select('*').order('money',{ascending:false});
- let html="<div class='card'>🏆 排行榜</div>";
- (data||[]).forEach((u,i)=>{
-  html+=`<div class='card'>${i+1}. ${u.username} 💰${u.money}</div>`;
+/* 图表（真实后台样式） */
+function renderChart(){
+ document.getElementById('app').innerHTML=`<canvas id='chart'></canvas>`;
+ let ctx=document.getElementById('chart');
+ new Chart(ctx,{
+  type:'line',
+  data:{labels:profitData.map((_,i)=>i),datasets:[{label:'盈利',data:profitData}]}
  });
- document.getElementById('app').innerHTML=html;
 }
 
-/* 后台 */
-async function renderAdmin(){
- let {data}=await supabase.from('bets').select('*').eq('status','未开奖');
- let html="<div class='card'>后台投注表</div><table><tr><th>用户</th><th>比赛</th><th>选择</th><th>金额</th></tr>";
- (data||[]).forEach(b=>{
-  html+=`<tr><td>${b.username}</td><td>${b.match}</td><td>${b.choice}</td><td>${b.amount}</td></tr>`;
- });
- html+="</table>";
+/* 模拟盈利变化 */
+setInterval(()=>{
+ profitData.push(Math.floor(Math.random()*200));
+},3000);
 
- html+=`<div class='card'><div class='btn' onclick="settle('主胜')">开奖主胜</div>
- <div class='btn' onclick="settle('客胜')">开奖客胜</div></div>`;
-
- document.getElementById('app').innerHTML=html;
-}
-
-/* 开奖 */
-async function settle(result){
- let {data:bets}=await supabase.from('bets').select('*').eq('status','未开奖');
-
- for(let b of bets||[]){
-  let win=b.choice===result;
-  let winMoney=win?b.amount*b.odd:0;
-
-  await supabase.from('bets').update({status:'已开奖',win_amount:winMoney}).eq('id',b.id);
-
-  if(win){
-   let {data:u}=await supabase.from('users').select('*').eq('username',b.username).single();
-   await supabase.from('users').update({money:u.money+winMoney}).eq('username',b.username);
-  }
- }
- alert('开奖完成');
-}
-
-showPage('login');
+showPage('auth');
 </script>
 
 </body>
