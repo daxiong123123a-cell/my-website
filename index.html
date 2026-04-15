@@ -2,173 +2,135 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>世界杯终极版</title>
+<title>世界杯投注平台</title>
 
 <style>
-body{margin:0;font-family:Arial;background:#f0f2f5;}
-.header{background:#0b2a5b;color:white;padding:10px;text-align:center;}
-.page{display:none;padding:10px;}
-.page.active{display:block;}
-.match{background:white;padding:10px;margin:10px 0;border-radius:10px;}
-.row{display:flex;justify-content:space-between;}
-.box{background:#eee;padding:8px;margin:2px;border-radius:5px;cursor:pointer;}
-.nav{position:fixed;bottom:0;width:100%;background:#111;color:white;display:flex;justify-content:space-around;padding:10px;}
-.record{background:white;margin:5px;padding:10px;border-radius:8px;}
-input{padding:8px;margin:5px;}
-button{padding:8px;}
+body { margin:0; font-family:Arial; background:#0b3d0b; color:white; text-align:center;}
+.nav { background:black; padding:15px; font-size:20px; }
+.box { margin:15px; }
+
+button {
+  padding:10px 15px;
+  background:#00ffcc;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+input {
+  padding:8px;
+}
 </style>
+
 </head>
 
 <body>
 
-<div class="header">
- ⚽ 世界杯 | 👤 <span id="user"></span> | 💰 <span id="money"></span>
+<div class="nav">⚽ 世界杯竞猜系统</div>
+
+<div class="box">
+  👤 用户：
+  <input id="username" placeholder="输入用户名">
+  <button onclick="login()">登录</button>
 </div>
 
-<!-- 登录页 -->
-<div id="loginPage" class="page active">
-<h2>登录</h2>
-<input id="username" placeholder="输入用户名">
-<button onclick="login()">登录</button>
+<div class="box">
+  💰 余额：<span id="money">0</span>
 </div>
 
-<!-- 赛事 -->
-<div id="page1" class="page"></div>
-
-<!-- 我的 -->
-<div id="page2" class="page"></div>
-
-<!-- 冠军 -->
-<div id="page3" class="page"></div>
-
-<div class="nav">
- <div onclick="showPage(1)">赛事</div>
- <div onclick="showPage(2)">我的</div>
- <div onclick="showPage(3)">冠军</div>
+<div class="box">
+  <h3>阿根廷 vs 法国</h3>
+  <button onclick="bet('阿根廷vs法国','阿根廷',100)">阿根廷 +100</button>
+  <button onclick="bet('阿根廷vs法国','法国',100)">法国 +100</button>
 </div>
+
+<!-- 👇 放在body最底部 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <script>
 
-let user = localStorage.getItem("user");
-let money = parseInt(localStorage.getItem("money")) || 100;
-let bets = JSON.parse(localStorage.getItem("bets")) || [];
+// 🔥 替换成你的
+const supabase = supabase.createClient(
+  "你的Project URL",
+  "你的anon key"
+);
 
-let matches = [
- {id:1,a:"阿根廷",b:"法国",odds:[1.8,3.2,2.5],score:"-"},
- {id:2,a:"巴西",b:"德国",odds:[1.6,3.5,2.8],score:"-"},
- {id:3,a:"西班牙",b:"英格兰",odds:[2.0,3.0,2.2],score:"-"},
- {id:4,a:"葡萄牙",b:"荷兰",odds:[2.1,3.1,2.3],score:"-"}
-];
+// 登录 / 注册
+async function login(){
+  let username = document.getElementById("username").value;
 
-function login(){
- let name = document.getElementById("username").value;
- if(!name) return alert("输入用户名");
+  let { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .single();
 
- user = name;
- localStorage.setItem("user",user);
+  if(!data){
+    await supabase.from('users').insert([
+      { username: username, money: 1000 }
+    ]);
+    alert("新用户创建成功！送1000");
+  }
 
- document.getElementById("loginPage").classList.remove("active");
- showPage(1);
- init();
+  localStorage.setItem("user", username);
+  loadUser();
 }
 
-function init(){
- document.getElementById("user").innerText = user;
- document.getElementById("money").innerText = money;
- renderMatches();
- renderBets();
+// 读取余额
+async function loadUser(){
+  let username = localStorage.getItem("user");
+  if(!username) return;
+
+  let { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .single();
+
+  document.getElementById("money").innerText = data.money;
 }
 
-function showPage(p){
- document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
- document.getElementById("page"+p).classList.add("active");
+// 投注
+async function bet(match, choice, amount){
+  let username = localStorage.getItem("user");
+
+  if(!username){
+    alert("请先登录！");
+    return;
+  }
+
+  let { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .single();
+
+  if(data.money < amount){
+    alert("余额不足！");
+    return;
+  }
+
+  // 扣钱
+  await supabase
+    .from('users')
+    .update({ money: data.money - amount })
+    .eq('username', username);
+
+  // 记录投注
+  await supabase.from('bets').insert([
+    {
+      username: username,
+      match: match,
+      amount: amount,
+      choice: choice
+    }
+  ]);
+
+  alert("下注成功！");
+  loadUser();
 }
 
-function renderMatches(){
- let html="";
- matches.forEach(m=>{
-  html+=`
-  <div class="match">
-    <div class="row">${m.a} vs ${m.b} <span>${m.score}</span></div>
-    <div class="row">
-      ${["主","和","客"].map((t,i)=>`
-      <div class="box" onclick="bet(${m.id},${i})">${t} ${m.odds[i]}</div>
-      `).join("")}
-    </div>
-  </div>`;
- });
- document.getElementById("page1").innerHTML=html;
-}
-
-function bet(id,i){
- if(money<10) return alert("余额不足");
-
- money-=10;
- bets.push({id,choice:i,result:"未开奖"});
-
- save();
- init();
-}
-
-function renderBets(){
- let html="";
- bets.forEach(b=>{
-  let m = matches.find(x=>x.id==b.id);
-  html+=`<div class="record">
-   ${m.a} vs ${m.b} | ${["主","和","客"][b.choice]} | ${b.result}
-  </div>`;
- });
- document.getElementById("page2").innerHTML=html;
-}
-
-/* 🏆 淘汰赛 */
-function simulateKnockout(){
- let teams = matches.map(m=>Math.random()>0.5?m.a:m.b);
-
- while(teams.length>1){
-   let next=[];
-   for(let i=0;i<teams.length;i+=2){
-     let winner = Math.random()>0.5?teams[i]:teams[i+1];
-     next.push(winner);
-   }
-   teams = next;
- }
-
- document.getElementById("page3").innerHTML =
- `<h2>🏆 冠军：${teams[0]}</h2>`;
-}
-
-/* 模拟比赛 */
-setInterval(()=>{
- matches.forEach(m=>{
-   let a=Math.floor(Math.random()*3);
-   let b=Math.floor(Math.random()*3);
-   m.score=a+"-"+b;
- });
-
- bets.forEach(b=>{
-   let m = matches.find(x=>x.id==b.id);
-   let [a,b2]=m.score.split("-");
-   let win = a>b2?0:a<b2?2:1;
-   b.result = win==b.choice?"中奖":"未中";
- });
-
- save();
- init();
- simulateKnockout();
-
-},5000);
-
-function save(){
- localStorage.setItem("money",money);
- localStorage.setItem("bets",JSON.stringify(bets));
-}
-
-/* 自动登录 */
-if(user){
- document.getElementById("loginPage").classList.remove("active");
- init();
-}
+// 自动加载
+loadUser();
 
 </script>
 
