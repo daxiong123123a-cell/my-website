@@ -2,138 +2,159 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>2026世界杯模拟器</title>
+<title>世界杯赛事</title>
 
 <style>
-body {
+body{
+ margin:0;
  font-family:Arial;
- background:#061d06;
+ background:#f5f7fa;
+}
+
+/* 顶部导航 */
+.header{
+ background:#0b2a5b;
  color:white;
- text-align:center;
-}
-
-h2 { margin-top:20px; }
-
-.group {
- display:inline-block;
- background:#111;
- padding:10px;
- margin:10px;
- border-radius:10px;
-}
-
-table {
- border-collapse:collapse;
-}
-
-td,th {
- border:1px solid #444;
- padding:5px 10px;
-}
-
-button {
  padding:10px 20px;
- margin:20px;
- background:#00ffcc;
- border:none;
+ display:flex;
+ justify-content:space-between;
+}
+
+.menu span{
+ margin-right:20px;
  cursor:pointer;
+}
+
+/* 布局 */
+.container{
+ display:flex;
+}
+
+.left{
+ width:70%;
+ padding:10px;
+}
+
+.right{
+ width:30%;
+ background:#eee;
+ padding:10px;
+}
+
+/* 比赛卡片 */
+.match{
+ background:white;
+ padding:10px;
+ margin-bottom:10px;
+ border-radius:8px;
+}
+
+.row{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+}
+
+.team{
+ width:120px;
+}
+
+/* 赔率按钮 */
+.odds{
+ display:flex;
+ gap:5px;
+}
+
+.box{
+ background:#f1f1f1;
+ padding:8px;
+ border-radius:5px;
+ text-align:center;
+ width:60px;
+ cursor:pointer;
+}
+
+.box:hover{
+ background:#00ffcc;
+ color:black;
+}
+
+/* 右侧 */
+.ad{
+ background:#222;
+ color:white;
+ height:150px;
+ margin-bottom:10px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🏆 2026世界杯模拟器</h1>
+<!-- 顶部 -->
+<div class="header">
+ <div class="menu">
+  <span>⚽ 首页</span>
+  <span>热门</span>
+  <span>今日</span>
+  <span>世界杯2026</span>
+ </div>
+ <div>💰 余额：0.76</div>
+</div>
 
-<button onclick="simulate()">⚽ 模拟全部小组赛</button>
+<div class="container">
 
-<div id="groups"></div>
+<!-- 左边 -->
+<div class="left">
 
-<script>
+<h3>世界杯2026（美加墨）</h3>
 
-const groups = {
- A:["阿根廷","荷兰","日本","美国"],
- B:["法国","德国","墨西哥","韩国"],
- C:["巴西","葡萄牙","摩洛哥","加拿大"],
- D:["英格兰","意大利","乌拉圭","澳大利亚"],
- E:["西班牙","比利时","瑞士","伊朗"],
- F:["克罗地亚","丹麦","塞尔维亚","埃及"],
- G:["哥伦比亚","智利","秘鲁","尼日利亚"],
- H:["波兰","瑞典","土耳其","沙特"]
-};
+<div class="match">
+ <div class="row">
+  <div class="team">墨西哥</div>
+  <div class="odds">
+    <div class="box">主 1.51</div>
+    <div class="box">和 4.05</div>
+    <div class="box">客 5.80</div>
+  </div>
+ </div>
 
-let table = {};
+ <div class="row">
+  <div class="team">南非</div>
+  <div>06-11 15:00</div>
+ </div>
+</div>
 
-function init(){
- table = {};
- for(let g in groups){
-   table[g] = groups[g].map(t=>({
-     name:t, pts:0, gf:0, ga:0
-   }));
- }
- render();
-}
+<div class="match">
+ <div class="row">
+  <div class="team">韩国</div>
+  <div class="odds">
+    <div class="box">主 2.72</div>
+    <div class="box">和 3.05</div>
+    <div class="box">客 2.61</div>
+  </div>
+ </div>
 
-function match(a,b){
- let g1 = Math.floor(Math.random()*5);
- let g2 = Math.floor(Math.random()*5);
+ <div class="row">
+  <div class="team">捷克</div>
+  <div>06-11 22:00</div>
+ </div>
+</div>
 
- a.gf+=g1; a.ga+=g2;
- b.gf+=g2; b.ga+=g1;
+</div>
 
- if(g1>g2) a.pts+=3;
- else if(g2>g1) b.pts+=3;
- else { a.pts+=1; b.pts+=1; }
-}
+<!-- 右边 -->
+<div class="right">
 
-function simulate(){
- init();
+<div class="ad">🎮 广告位</div>
+<div class="ad">📱 预约投注</div>
 
- for(let g in table){
-   let t = table[g];
+</div>
 
-   for(let i=0;i<t.length;i++){
-     for(let j=i+1;j<t.length;j++){
-       match(t[i],t[j]);
-     }
-   }
-
-   // 排名
-   t.sort((a,b)=>{
-     return b.pts - a.pts || (b.gf-b.ga)-(a.gf-a.ga);
-   });
- }
-
- render();
-}
-
-function render(){
- let html = "";
-
- for(let g in table){
-   html += `<div class="group">
-   <h2>${g}组</h2>
-   <table>
-   <tr><th>球队</th><th>分</th><th>进</th><th>失</th></tr>`;
-
-   table[g].forEach(t=>{
-     html += `<tr>
-       <td>${t.name}</td>
-       <td>${t.pts}</td>
-       <td>${t.gf}</td>
-       <td>${t.ga}</td>
-     </tr>`;
-   });
-
-   html += "</table></div>";
- }
-
- document.getElementById("groups").innerHTML = html;
-}
-
-init();
-
-</script>
+</div>
 
 </body>
 </html>
