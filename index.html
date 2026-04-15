@@ -2,155 +2,154 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>世界杯系统（前台+后台控制）</title>
+<title>世界杯系统（Supabase上线版 + 后台 + UI升级）</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:white;}
-.header{padding:12px;display:flex;justify-content:space-between;background:#020617;}
+.header{padding:12px;display:flex;justify-content:space-between;background:#020617;position:sticky;top:0;}
 .container{padding:12px;padding-bottom:90px;}
-.card{background:#0f172a;margin:10px 0;padding:14px;border-radius:12px;}
-.btn{background:#1e293b;padding:10px;border-radius:8px;margin:5px;cursor:pointer;display:inline-block;}
+.card{background:#0f172a;margin:10px 0;padding:14px;border-radius:12px;box-shadow:0 5px 20px rgba(0,0,0,0.5);}
+.btn{background:#1e293b;padding:8px;border-radius:8px;margin:5px;cursor:pointer;text-align:center;}
+.btn:hover{background:#22c55e;color:black;}
 .tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#020617;border-top:1px solid #1e293b;}
 .tab{flex:1;text-align:center;padding:10px;font-size:12px;}
-.admin{background:#111827;padding:10px;border-radius:10px;margin-top:10px;}
+table{width:100%;border-collapse:collapse;}
+td,th{border:1px solid #1e293b;padding:6px;text-align:center;}
 </style>
 </head>
 <body>
 
 <div class="header">
   <div>⚽ 世界杯系统</div>
-  <div>💰<span id="money">0</span></div>
+  <div>👤<span id="user">未登录</span> 💰<span id="money">0</span></div>
 </div>
 
 <div class="container" id="app"></div>
 
 <div class="tabbar">
-  <div class="tab" onclick="showPage('home')">首页</div>
+  <div class="tab" onclick="showPage('login')">登录</div>
+  <div class="tab" onclick="showPage('match')">比赛</div>
+  <div class="tab" onclick="showPage('rank')">排行</div>
   <div class="tab" onclick="showPage('admin')">后台</div>
-  <div class="tab" onclick="showPage('user')">我的</div>
 </div>
 
-<script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-const supabaseClient = createClient("https://kdjlnfkcxrndqhrzvbzu.supabase.co","sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9");
+<script>
 
-let user=null;
-let isAdmin=false;
+// ✅ 填你自己的
+const SUPABASE_URL = "https://kdjlnfkcxrndqhrzvbzu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9";
 
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser=null;
+
+/* 页面控制 */
+function showPage(p){
+ if(p==='login')renderLogin();
+ if(p==='match')renderMatch();
+ if(p==='rank')renderRank();
+ if(p==='admin')renderAdmin();
+}
+
+/* 登录 */
+function renderLogin(){
+ document.getElementById('app').innerHTML=`
+ <div class='card'>用户名：<input id='name'>
+ <div class='btn' onclick='login()'>登录</div></div>`;
+}
+
+async function login(){
+ let name=document.getElementById('name').value;
+ let {data}=await supabase.from('users').select('*').eq('username',name);
+ if(!data || data.length===0){
+  await supabase.from('users').insert([{username:name,money:1000}]);
+ }
+ currentUser=name;
+ loadUser();
+ alert('登录成功');
+}
+
+async function loadUser(){
+ if(!currentUser)return;
+ let {data}=await supabase.from('users').select('*').eq('username',currentUser).single();
+ document.getElementById('user').innerText=currentUser;
+ document.getElementById('money').innerText=data.money;
+}
+
+/* 比赛 */
 let matches=[
- {id:1,teams:"阿根廷 vs 法国",odds:{home:1.8,away:2.0},locked:false},
- {id:2,teams:"巴西 vs 英格兰",odds:{home:1.6,away:2.3},locked:false}
+ {teams:"阿根廷 vs 法国",odds:{home:1.8,away:2.0}},
+ {teams:"巴西 vs 英格兰",odds:{home:1.6,away:2.3}}
 ];
 
-window.showPage=(p)=>{
- if(p==='home')renderHome();
- if(p==='admin')renderAdmin();
- if(p==='user')renderUser();
-}
-
-function renderHome(){
+function renderMatch(){
  let html="";
  matches.forEach((m,i)=>{
-  html+=`<div class='card'>
-   <div>${m.teams} ${m.locked?'🔒':''}</div>
-   <div class='btn' onclick="bet(${i},'主胜')">主 ${m.odds.home}</div>
-   <div class='btn' onclick="bet(${i},'客胜')">客 ${m.odds.away}</div>
+  html+=`<div class='card'>${m.teams}
+  <div class='btn' onclick="bet(${i},'主胜',${m.odds.home})">主 ${m.odds.home}</div>
+  <div class='btn' onclick="bet(${i},'客胜',${m.odds.away})">客 ${m.odds.away}</div>
   </div>`;
  });
  document.getElementById('app').innerHTML=html;
 }
 
-window.bet=(i,c)=>{
- if(!user)return alert('请先登录');
- if(matches[i].locked)return alert('已封盘');
- alert('下注成功:'+c);
+async function bet(i,choice,odd){
+ if(!currentUser)return alert('请先登录');
+ let amount=100;
+
+ let {data:u}=await supabase.from('users').select('*').eq('username',currentUser).single();
+ if(u.money<amount) return alert('余额不足');
+
+ await supabase.from('users').update({money:u.money-amount}).eq('username',currentUser);
+ await supabase.from('bets').insert([{username:currentUser,match:matches[i].teams,choice,odd,amount,status:'未开奖'}]);
+
+ loadUser();
 }
 
-/* 后台系统 */
-function renderAdmin(){
- if(!isAdmin) return document.getElementById('app').innerHTML="无权限";
- let html="<div class='card'>⚙ 后台控制面板</div>";
-
- matches.forEach((m,i)=>{
-  html+=`<div class='admin'>
-   <div>${m.teams}</div>
-   <div class='btn' onclick="setResult(${i},'主胜')">开奖主胜</div>
-   <div class='btn' onclick="setResult(${i},'客胜')">开奖客胜</div>
-   <div class='btn' onclick="toggleLock(${i})">${m.locked?'解锁':'锁盘'}</div>
-   <div class='btn' onclick="controlOdds(${i},'home')">调主赔率</div>
-   <div class='btn' onclick="controlOdds(${i},'away')">调客赔率</div>
-  </div>`;
+/* 排行榜 */
+async function renderRank(){
+ let {data}=await supabase.from('users').select('*').order('money',{ascending:false});
+ let html="<div class='card'>🏆 排行榜</div>";
+ (data||[]).forEach((u,i)=>{
+  html+=`<div class='card'>${i+1}. ${u.username} 💰${u.money}</div>`;
  });
+ document.getElementById('app').innerHTML=html;
+}
 
- html+=`<div class='admin'>
-   <div>用户管理</div>
-   <div class='btn' onclick="addMoney()">给用户加钱</div>
- </div>`;
+/* 后台 */
+async function renderAdmin(){
+ let {data}=await supabase.from('bets').select('*').eq('status','未开奖');
+ let html="<div class='card'>后台投注表</div><table><tr><th>用户</th><th>比赛</th><th>选择</th><th>金额</th></tr>";
+ (data||[]).forEach(b=>{
+  html+=`<tr><td>${b.username}</td><td>${b.match}</td><td>${b.choice}</td><td>${b.amount}</td></tr>`;
+ });
+ html+="</table>";
+
+ html+=`<div class='card'><div class='btn' onclick="settle('主胜')">开奖主胜</div>
+ <div class='btn' onclick="settle('客胜')">开奖客胜</div></div>`;
 
  document.getElementById('app').innerHTML=html;
 }
 
-window.setResult=async(i,result)=>{
- let {data:bets}=await supabaseClient.from('bets').select('*').eq('match',matches[i].teams).eq('status','未开奖');
+/* 开奖 */
+async function settle(result){
+ let {data:bets}=await supabase.from('bets').select('*').eq('status','未开奖');
+
  for(let b of bets||[]){
   let win=b.choice===result;
   let winMoney=win?b.amount*b.odd:0;
-  await supabaseClient.from('bets').update({status:'已开奖',win_amount:winMoney}).eq('id',b.id);
+
+  await supabase.from('bets').update({status:'已开奖',win_amount:winMoney}).eq('id',b.id);
+
   if(win){
-   let {data:u}=await supabaseClient.from('users').select('*').eq('username',b.username).single();
-   await supabaseClient.from('users').update({money:u.money+winMoney}).eq('username',b.username);
+   let {data:u}=await supabase.from('users').select('*').eq('username',b.username).single();
+   await supabase.from('users').update({money:u.money+winMoney}).eq('username',b.username);
   }
  }
- alert('已开奖:'+result);
+ alert('开奖完成');
 }
 
-window.toggleLock=(i)=>{
- matches[i].locked=!matches[i].locked;
- renderAdmin();
-}
-
-window.controlOdds=(i,type)=>{
- let val=parseFloat(prompt('输入新赔率'));
- if(!val)return;
- matches[i].odds[type]=val;
- renderAdmin();
-}
-
-window.addMoney=async()=>{
- let name=prompt('用户名');
- let amount=parseInt(prompt('金额'));
- let {data:u}=await supabaseClient.from('users').select('*').eq('username',name).single();
- if(!u)return alert('用户不存在');
- await supabaseClient.from('users').update({money:u.money+amount}).eq('username',name);
- alert('已加钱');
-}
-
-function renderUser(){
- document.getElementById('app').innerHTML=`
- 用户名:<input id='u'>
- <button onclick='login()'>登录</button>
- <button onclick='adminLogin()'>管理员登录</button>
- `;
-}
-
-window.login=async()=>{
- let name=document.getElementById('u').value;
- let {data}=await supabaseClient.from('users').select('*').eq('username',name);
- if(!data||data.length===0){await supabaseClient.from('users').insert([{username:name,money:1000}]);}
- user=name;loadUser();
-}
-
-window.adminLogin=()=>{
- let pwd=prompt('管理员密码');
- if(pwd==='admin123'){
-  isAdmin=true;
-  alert('进入后台');
-  renderAdmin();
- }else alert('密码错误');
-}
-
-async function loadUser(){let {data}=await supabaseClient.from('users').select('*').eq('username',user).single();document.getElementById('money').innerText=data?.money||0;}
-
-showPage('home');
+showPage('login');
 </script>
 
 </body>
