@@ -2,132 +2,179 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>球员卡片阵容（翻转卡）</title>
+<title>足球阵容（高级版）</title>
+
 <style>
-body { margin:0; font-family:Arial; background:#0b3d0b; color:white; }
-.nav { background:black; padding:10px; text-align:center; }
-.select { cursor:pointer; padding:10px; display:flex; align-items:center; gap:10px; }
-img.flag { width:24px; }
+body {
+ margin:0;
+ font-family:Arial;
+ background:#061d06;
+ color:white;
+ text-align:center;
+}
 
-.pitch { position:relative; width:360px; height:520px; background:#0a5c0a; border:2px solid #fff; border-radius:15px; margin:20px auto; }
+.nav {
+ background:black;
+ padding:10px;
+}
 
-.card-wrap { position:absolute; transform:translate(-50%,-50%); width:80px; height:110px; perspective:800px; }
+.select {
+ cursor:pointer;
+ padding:10px;
+}
 
+.pitch {
+ position:relative;
+ width:360px;
+ height:520px;
+ background:#0a5c0a;
+ border:2px solid #fff;
+ border-radius:15px;
+ margin:20px auto;
+}
+
+/* 卡片容器 */
+.card-wrap {
+ position:absolute;
+ transform:translate(-50%,-50%);
+ width:70px;
+ height:100px;
+ perspective:800px;
+}
+
+/* 卡片 */
 .card {
- width:100%; height:100%; position:relative;
+ width:100%;
+ height:100%;
+ position:relative;
  transform-style:preserve-3d;
- transition:transform 0.6s;
+ transition:0.6s;
 }
 
-.card.flip { transform:rotateY(180deg); }
+.card.flip {
+ transform:rotateY(180deg);
+}
 
-.card-face {
- position:absolute; width:100%; height:100%;
+/* 正反面 */
+.face {
+ position:absolute;
+ width:100%;
+ height:100%;
+ border-radius:10px;
  backface-visibility:hidden;
- border-radius:12px;
- padding:5px; box-sizing:border-box;
 }
 
+/* 正面 */
 .front {
  background:linear-gradient(135deg,#111,#333);
+ box-shadow:0 0 10px #00ffcc;
  text-align:center;
- box-shadow:0 0 10px rgba(0,255,200,0.6);
+ padding:5px;
 }
 
+/* 背面 */
 .back {
  background:#111;
  transform:rotateY(180deg);
- font-size:11px;
+ font-size:12px;
+ padding:5px;
 }
 
+/* 头像 */
 .card img {
- width:42px; height:42px; border-radius:50%; border:2px solid #00ffcc;
+ width:40px;
+ height:40px;
+ border-radius:50%;
+ border:2px solid #00ffcc;
 }
 
-.name { font-size:11px; }
-.rating { font-size:13px; color:#00ffcc; font-weight:bold; }
-.stat { margin:2px 0; }
+.name {
+ font-size:12px;
+}
+
+.rating {
+ color:#00ffcc;
+ font-weight:bold;
+}
 </style>
 </head>
+
 <body>
 
-<div class="nav">⚽ 球员卡片阵容（翻转卡）</div>
+<div class="nav">⚽ 足球阵容（高级UI）</div>
 
-<div id="teamSelect"></div>
-<div id="pitch"></div>
+<div class="select" onclick="showTeam('a')">阿根廷</div>
+<div class="select" onclick="showTeam('b')">法国</div>
+
+<div id="pitch" class="pitch"></div>
 
 <script>
-const flagMap = { '阿根廷':'ar','法国':'fr' };
-function flag(name){ return `https://flagcdn.com/w40/${flagMap[name]}.png`; }
 
 function avatar(name){
- return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00ffcc&color=000`;
+ return "https://ui-avatars.com/api/?name="+name+"&background=00ffcc&color=000";
 }
 
-const formations = {
- '阿根廷':[
-  {name:'马丁内斯',rating:85,x:50,y:90,stats:{扑救:88,反应:85}},
-  {name:'莫利纳',rating:80,x:20,y:70,stats:{速度:82,防守:78}},
-  {name:'罗梅罗',rating:85,x:40,y:70,stats:{防守:88,力量:85}},
-  {name:'奥塔门迪',rating:84,x:60,y:70,stats:{防守:86,头球:87}},
-  {name:'塔利亚菲科',rating:82,x:80,y:70,stats:{速度:80,防守:82}},
-  {name:'德保罗',rating:84,x:30,y:50,stats:{传球:85,体力:88}},
-  {name:'恩佐',rating:86,x:50,y:50,stats:{传球:88,控球:86}},
-  {name:'麦卡利斯特',rating:85,x:70,y:50,stats:{射门:83,传球:86}},
-  {name:'迪马利亚',rating:88,x:20,y:25,stats:{速度:90,突破:88}},
-  {name:'梅西',rating:93,x:50,y:20,stats:{射门:95,传球:94}},
-  {name:'劳塔罗',rating:87,x:80,y:25,stats:{射门:89,跑位:86}}
+const teams = {
+ a: [
+  {name:'梅西',rating:93,x:50,y:20},
+  {name:'迪马利亚',rating:88,x:20,y:30},
+  {name:'劳塔罗',rating:87,x:80,y:30},
+  {name:'恩佐',rating:86,x:50,y:50},
+  {name:'德保罗',rating:84,x:30,y:60},
+  {name:'麦卡利斯特',rating:85,x:70,y:60},
+  {name:'后卫1',rating:82,x:20,y:75},
+  {name:'后卫2',rating:83,x:40,y:80},
+  {name:'后卫3',rating:84,x:60,y:80},
+  {name:'后卫4',rating:82,x:80,y:75},
+  {name:'门将',rating:85,x:50,y:92}
  ],
- '法国':[
-  {name:'洛里',rating:87,x:50,y:90,stats:{扑救:90,反应:88}},
-  {name:'孔德',rating:83,x:20,y:70,stats:{速度:85,防守:82}},
-  {name:'瓦拉内',rating:86,x:40,y:70,stats:{防守:88,速度:84}},
-  {name:'于帕',rating:84,x:60,y:70,stats:{力量:90,防守:83}},
-  {name:'特奥',rating:85,x:80,y:70,stats:{速度:92,进攻:85}},
-  {name:'琼阿梅尼',rating:86,x:30,y:50,stats:{防守:88,传球:85}},
-  {name:'拉比奥',rating:84,x:50,y:50,stats:{体力:88,控球:84}},
-  {name:'格列兹曼',rating:88,x:70,y:50,stats:{传球:90,射门:86}},
-  {name:'姆巴佩',rating:92,x:20,y:25,stats:{速度:99,射门:91}},
-  {name:'吉鲁',rating:85,x:50,y:20,stats:{头球:92,射门:88}},
-  {name:'登贝莱',rating:86,x:80,y:25,stats:{速度:95,突破:88}}
+ b: [
+  {name:'姆巴佩',rating:92,x:50,y:20},
+  {name:'登贝莱',rating:86,x:20,y:30},
+  {name:'吉鲁',rating:85,x:80,y:30},
+  {name:'格列兹曼',rating:88,x:50,y:50},
+  {name:'琼阿梅尼',rating:86,x:30,y:60},
+  {name:'拉比奥',rating:84,x:70,y:60},
+  {name:'后卫A',rating:83,x:20,y:75},
+  {name:'后卫B',rating:86,x:40,y:80},
+  {name:'后卫C',rating:84,x:60,y:80},
+  {name:'后卫D',rating:85,x:80,y:75},
+  {name:'门将',rating:87,x:50,y:92}
  ]
 };
 
-function renderSelect(){
- let html='';
- Object.keys(formations).forEach(t=>{
-  html+=`<div class='select' onclick="showTeam('${t}')"><img class='flag' src='${flag(t)}'> ${t}</div>`;
+function showTeam(key){
+ const pitch = document.getElementById("pitch");
+ pitch.innerHTML = "";
+
+ teams[key].forEach(p=>{
+  const wrap = document.createElement("div");
+  wrap.className = "card-wrap";
+  wrap.style.left = p.x+"%";
+  wrap.style.top = p.y+"%";
+
+  wrap.innerHTML = `
+   <div class="card" onclick="this.classList.toggle('flip')">
+     <div class="face front">
+       <div class="rating">${p.rating}</div>
+       <img src="${avatar(p.name)}">
+       <div class="name">${p.name}</div>
+     </div>
+     <div class="face back">
+       <div>${p.name}</div>
+       <div>评分：${p.rating}</div>
+       <div>位置：球员</div>
+     </div>
+   </div>
+  `;
+
+  pitch.appendChild(wrap);
  });
- document.getElementById('teamSelect').innerHTML=html;
 }
 
-function showTeam(name){
- let players = formations[name];
- let html = `<div class='pitch'>`;
- players.forEach((p,i)=>{
-  html+=`<div class='card-wrap' style='left:${p.x}%;top:${p.y}%;'>
-    <div class='card' onclick='flipCard(this)'>
-      <div class='card-face front'>
-        <div class='rating'>${p.rating}</div>
-        <img src='${avatar(p.name)}'>
-        <div class='name'>${p.name}</div>
-      </div>
-      <div class='card-face back'>
-        <div>${p.name}</div>
-        ${Object.entries(p.stats).map(s=>`<div class='stat'>${s[0]}: ${s[1]}</div>`).join('')}
-      </div>
-    </div>
-  </div>`;
- });
- html+='</div>';
- document.getElementById('pitch').innerHTML=html;
-}
+// 默认显示
+showTeam('a');
 
-function flipCard(el){
- el.classList.toggle('flip');
-}
-
-renderSelect();
 </script>
 
 </body>
