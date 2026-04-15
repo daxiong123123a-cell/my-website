@@ -2,186 +2,176 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>世界杯投注平台</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<title>世界杯APP-最终版</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#0f172a;
-  color:white;
-}
-
-.header{
-  background:#1e293b;
-  padding:15px;
-  display:flex;
-  justify-content:space-between;
-}
-
-.balance{
-  color:#22c55e;
-}
-
-.container{
-  padding:10px;
-}
-
-.match{
-  background:#1e293b;
-  margin:10px 0;
-  padding:15px;
-  border-radius:10px;
-}
-
-.teams{
-  font-size:18px;
-  margin-bottom:10px;
-}
-
-.odds{
-  display:flex;
-  gap:10px;
-}
-
-.odd-btn{
-  flex:1;
-  background:#334155;
-  padding:10px;
-  border-radius:8px;
-  cursor:pointer;
-}
-
-.odd-btn:hover{
-  background:#22c55e;
-  color:black;
-}
-
-.login{
-  padding:10px;
-}
-
-input{
-  padding:5px;
-}
+body{margin:0;font-family:Arial;background:#020617;color:white;}
+.header{padding:12px;display:flex;justify-content:space-between;background:#111827;}
+.container{padding:12px;padding-bottom:100px;}
+.cover{height:160px;border-radius:12px;background:url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?q=80&w=1200') center/cover;margin-bottom:10px;display:flex;align-items:end;padding:10px;}
+.card{background:#1f2937;margin:10px 0;padding:12px;border-radius:12px;}
+.odds{display:flex;gap:10px;margin-top:10px;}
+.btn{flex:1;background:#374151;padding:10px;border-radius:8px;text-align:center;cursor:pointer;}
+.tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#111827;}
+.tab{flex:1;text-align:center;padding:10px;}
+.vip{color:gold;}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <div>⚽ 世界杯投注平台</div>
-  <div class="balance">余额: <span id="money">0</span></div>
+  <div>⚽ 2026世界杯</div>
+  <div>💰<span id="money">0</span> <span id="vip"></span></div>
 </div>
 
-<div class="login">
-  用户名: <input id="username">
-  <button onclick="login()">登录</button>
-</div>
+<div class="container" id="app"></div>
 
-<div class="container" id="matches"></div>
+<div class="tabbar">
+  <div class="tab" onclick="showPage('home')">首页</div>
+  <div class="tab" onclick="showPage('rank')">排行</div>
+  <div class="tab" onclick="showPage('record')">记录</div>
+  <div class="tab" onclick="showPage('user')">我的</div>
+</div>
 
 <script>
+// 👉 在这里填你的 Supabase 信息
+const SUPABASE_URL = "";
+const SUPABASE_KEY = "";
 
-const supabaseClient = supabase.createClient(
-  "https://你的URL",
-  "你的KEY"
-);
+let supabaseClient = null;
 
-let currentUser = null;
-
-const matches = [
-  {teams:"阿根廷 vs 法国", odds:[1.5,3.2,5.0]},
-  {teams:"巴西 vs 英格兰", odds:[1.8,3.0,4.2]}
-];
-
-function render(){
-  const el = document.getElementById("matches");
-  el.innerHTML = "";
-
-  matches.forEach(m=>{
-    el.innerHTML += `
-    <div class="match">
-      <div class="teams">${m.teams}</div>
-      <div class="odds">
-        <div class="odd-btn" onclick="bet('${m.teams}','主',${m.odds[0]})">主 ${m.odds[0]}</div>
-        <div class="odd-btn" onclick="bet('${m.teams}','平',${m.odds[1]})">平 ${m.odds[1]}</div>
-        <div class="odd-btn" onclick="bet('${m.teams}','客',${m.odds[2]})">客 ${m.odds[2]}</div>
-      </div>
-    </div>
-    `;
-  });
+if(SUPABASE_URL && SUPABASE_KEY && window.supabase){
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}else{
+  console.log("当前为本地模式");
 }
 
-async function login(){
-  const username = document.getElementById("username").value;
+let user=null;
+let localUser={money:1000};
+let localBets=[];
 
-  let { data } = await supabaseClient
-    .from("users")
-    .select("*")
-    .eq("username", username);
+let matches=[
+ {teams:"阿根廷 vs 法国",odds:{home:1.8,away:2.0}},
+ {teams:"巴西 vs 英格兰",odds:{home:1.6,away:2.3}}
+];
 
-  if(data.length === 0){
-    await supabaseClient.from("users").insert([
-      { username: username, money: 1000 }
-    ]);
-  }
+function showPage(p){
+ if(p==='home')renderHome();
+ if(p==='rank')renderRank();
+ if(p==='record')renderRecord();
+ if(p==='user')renderUser();
+}
 
-  currentUser = username;
-  loadUser();
+// 动态赔率
+setInterval(()=>{
+ matches.forEach(m=>{
+   m.odds.home=(parseFloat(m.odds.home)+(Math.random()-0.5)*0.1).toFixed(2);
+   m.odds.away=(parseFloat(m.odds.away)+(Math.random()-0.5)*0.1).toFixed(2);
+ });
+ renderHome();
+},3000);
+
+function renderHome(){
+ let html=`<div class='cover'><h2>2026 美加墨世界杯</h2></div>`;
+ matches.forEach((m,i)=>{
+  html+=`<div class='card'>
+    <div>${m.teams}</div>
+    <div class='odds'>
+      <div class='btn' onclick="bet(${i},'主胜',${m.odds.home})">主 ${m.odds.home}</div>
+      <div class='btn' onclick="bet(${i},'客胜',${m.odds.away})">客 ${m.odds.away}</div>
+    </div>
+  </div>`;
+ });
+ document.getElementById('app').innerHTML=html;
+}
+
+async function bet(i,choice,odd){
+ let amount=parseInt(prompt('下注金额'));
+ if(!amount) return;
+
+ if(supabaseClient){
+   let {data:u}=await supabaseClient.from('users').select('*').eq('username',user).single();
+   if(u.money<amount) return alert('余额不足');
+
+   await supabaseClient.from('users').update({money:u.money-amount}).eq('username',user);
+   await supabaseClient.from('bets').insert([{username:user,match:matches[i].teams,choice,odd,amount}]);
+
+ }else{
+   if(localUser.money<amount) return alert('余额不足');
+   localUser.money-=amount;
+   localBets.push({match:matches[i].teams,choice,amount});
+ }
+
+ loadUser();
+}
+
+function getVIP(m){
+ if(m>10000)return 'VIP3';
+ if(m>5000)return 'VIP2';
+ if(m>1000)return 'VIP1';
+ return '普通';
 }
 
 async function loadUser(){
-  let { data } = await supabaseClient
-    .from("users")
-    .select("*")
-    .eq("username", currentUser)
-    .single();
-
-  document.getElementById("money").innerText = data.money;
+ if(supabaseClient){
+   let {data}=await supabaseClient.from('users').select('*').eq('username',user).single();
+   document.getElementById('money').innerText=data.money;
+   document.getElementById('vip').innerText=getVIP(data.money);
+ }else{
+   document.getElementById('money').innerText=localUser.money;
+   document.getElementById('vip').innerText=getVIP(localUser.money);
+ }
 }
 
-async function bet(match, choice, odd){
-  if(!currentUser){
-    alert("请先登录");
-    return;
-  }
+async function renderRank(){
+ if(!supabaseClient){
+   document.getElementById('app').innerHTML="本地模式无排行榜";
+   return;
+ }
 
-  let amount = 100;
-
-  let { data:user } = await supabaseClient
-    .from("users")
-    .select("*")
-    .eq("username", currentUser)
-    .single();
-
-  if(user.money < amount){
-    alert("余额不足");
-    return;
-  }
-
-  await supabaseClient
-    .from("users")
-    .update({ money: user.money - amount })
-    .eq("username", currentUser);
-
-  await supabaseClient.from("bets").insert([
-    {
-      username: currentUser,
-      match: match,
-      amount: amount,
-      choice: choice,
-      odd: odd
-    }
-  ]);
-
-  alert("下注成功");
-  loadUser();
+ let {data}=await supabaseClient.from('users').select('*').order('money',{ascending:false}).limit(10);
+ let html="<div class='card'>排行榜</div>";
+ data.forEach((u,i)=> html+=`<div class='card'>${i+1}. ${u.username} 💰${u.money}</div>`);
+ document.getElementById('app').innerHTML=html;
 }
 
-render();
+async function renderRecord(){
+ if(supabaseClient){
+   let {data}=await supabaseClient.from('bets').select('*').eq('username',user);
+   let html="";
+   (data||[]).forEach(b=> html+=`<div class='card'>${b.match} ${b.choice} ￥${b.amount}</div>`);
+   document.getElementById('app').innerHTML=html;
+ }else{
+   let html="";
+   localBets.forEach(b=> html+=`<div class='card'>${b.match} ${b.choice} ￥${b.amount}</div>`);
+   document.getElementById('app').innerHTML=html;
+ }
+}
 
+function renderUser(){
+ document.getElementById('app').innerHTML=`
+ 用户名:<input id='u'>
+ <button onclick='login()'>登录</button>
+ `;
+}
+
+async function login(){
+ let name=document.getElementById('u').value;
+ user=name;
+
+ if(supabaseClient){
+   let {data}=await supabaseClient.from('users').select('*').eq('username',name);
+   if(data.length===0){
+     await supabaseClient.from('users').insert([{username:name,money:1000}]);
+   }
+ }
+
+ loadUser();
+}
+
+showPage('home');
 </script>
 
 </body>
