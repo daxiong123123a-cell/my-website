@@ -2,178 +2,136 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>足球阵容（高级版）</title>
+<title>2026世界杯模拟器</title>
 
 <style>
 body {
- margin:0;
  font-family:Arial;
  background:#061d06;
  color:white;
  text-align:center;
 }
 
-.nav {
- background:black;
- padding:10px;
-}
+h2 { margin-top:20px; }
 
-.select {
- cursor:pointer;
- padding:10px;
-}
-
-.pitch {
- position:relative;
- width:360px;
- height:520px;
- background:#0a5c0a;
- border:2px solid #fff;
- border-radius:15px;
- margin:20px auto;
-}
-
-/* 卡片容器 */
-.card-wrap {
- position:absolute;
- transform:translate(-50%,-50%);
- width:70px;
- height:100px;
- perspective:800px;
-}
-
-/* 卡片 */
-.card {
- width:100%;
- height:100%;
- position:relative;
- transform-style:preserve-3d;
- transition:0.6s;
-}
-
-.card.flip {
- transform:rotateY(180deg);
-}
-
-/* 正反面 */
-.face {
- position:absolute;
- width:100%;
- height:100%;
- border-radius:10px;
- backface-visibility:hidden;
-}
-
-/* 正面 */
-.front {
- background:linear-gradient(135deg,#111,#333);
- box-shadow:0 0 10px #00ffcc;
- text-align:center;
- padding:5px;
-}
-
-/* 背面 */
-.back {
+.group {
+ display:inline-block;
  background:#111;
- transform:rotateY(180deg);
- font-size:12px;
- padding:5px;
+ padding:10px;
+ margin:10px;
+ border-radius:10px;
 }
 
-/* 头像 */
-.card img {
- width:40px;
- height:40px;
- border-radius:50%;
- border:2px solid #00ffcc;
+table {
+ border-collapse:collapse;
 }
 
-.name {
- font-size:12px;
+td,th {
+ border:1px solid #444;
+ padding:5px 10px;
 }
 
-.rating {
- color:#00ffcc;
- font-weight:bold;
+button {
+ padding:10px 20px;
+ margin:20px;
+ background:#00ffcc;
+ border:none;
+ cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="nav">⚽ 足球阵容（高级UI）</div>
+<h1>🏆 2026世界杯模拟器</h1>
 
-<div class="select" onclick="showTeam('a')">阿根廷</div>
-<div class="select" onclick="showTeam('b')">法国</div>
+<button onclick="simulate()">⚽ 模拟全部小组赛</button>
 
-<div id="pitch" class="pitch"></div>
+<div id="groups"></div>
 
 <script>
 
-function avatar(name){
- return "https://ui-avatars.com/api/?name="+name+"&background=00ffcc&color=000";
-}
-
-const teams = {
- a: [
-  {name:'梅西',rating:93,x:50,y:20},
-  {name:'迪马利亚',rating:88,x:20,y:30},
-  {name:'劳塔罗',rating:87,x:80,y:30},
-  {name:'恩佐',rating:86,x:50,y:50},
-  {name:'德保罗',rating:84,x:30,y:60},
-  {name:'麦卡利斯特',rating:85,x:70,y:60},
-  {name:'后卫1',rating:82,x:20,y:75},
-  {name:'后卫2',rating:83,x:40,y:80},
-  {name:'后卫3',rating:84,x:60,y:80},
-  {name:'后卫4',rating:82,x:80,y:75},
-  {name:'门将',rating:85,x:50,y:92}
- ],
- b: [
-  {name:'姆巴佩',rating:92,x:50,y:20},
-  {name:'登贝莱',rating:86,x:20,y:30},
-  {name:'吉鲁',rating:85,x:80,y:30},
-  {name:'格列兹曼',rating:88,x:50,y:50},
-  {name:'琼阿梅尼',rating:86,x:30,y:60},
-  {name:'拉比奥',rating:84,x:70,y:60},
-  {name:'后卫A',rating:83,x:20,y:75},
-  {name:'后卫B',rating:86,x:40,y:80},
-  {name:'后卫C',rating:84,x:60,y:80},
-  {name:'后卫D',rating:85,x:80,y:75},
-  {name:'门将',rating:87,x:50,y:92}
- ]
+const groups = {
+ A:["阿根廷","荷兰","日本","美国"],
+ B:["法国","德国","墨西哥","韩国"],
+ C:["巴西","葡萄牙","摩洛哥","加拿大"],
+ D:["英格兰","意大利","乌拉圭","澳大利亚"],
+ E:["西班牙","比利时","瑞士","伊朗"],
+ F:["克罗地亚","丹麦","塞尔维亚","埃及"],
+ G:["哥伦比亚","智利","秘鲁","尼日利亚"],
+ H:["波兰","瑞典","土耳其","沙特"]
 };
 
-function showTeam(key){
- const pitch = document.getElementById("pitch");
- pitch.innerHTML = "";
+let table = {};
 
- teams[key].forEach(p=>{
-  const wrap = document.createElement("div");
-  wrap.className = "card-wrap";
-  wrap.style.left = p.x+"%";
-  wrap.style.top = p.y+"%";
-
-  wrap.innerHTML = `
-   <div class="card" onclick="this.classList.toggle('flip')">
-     <div class="face front">
-       <div class="rating">${p.rating}</div>
-       <img src="${avatar(p.name)}">
-       <div class="name">${p.name}</div>
-     </div>
-     <div class="face back">
-       <div>${p.name}</div>
-       <div>评分：${p.rating}</div>
-       <div>位置：球员</div>
-     </div>
-   </div>
-  `;
-
-  pitch.appendChild(wrap);
- });
+function init(){
+ table = {};
+ for(let g in groups){
+   table[g] = groups[g].map(t=>({
+     name:t, pts:0, gf:0, ga:0
+   }));
+ }
+ render();
 }
 
-// 默认显示
-showTeam('a');
+function match(a,b){
+ let g1 = Math.floor(Math.random()*5);
+ let g2 = Math.floor(Math.random()*5);
+
+ a.gf+=g1; a.ga+=g2;
+ b.gf+=g2; b.ga+=g1;
+
+ if(g1>g2) a.pts+=3;
+ else if(g2>g1) b.pts+=3;
+ else { a.pts+=1; b.pts+=1; }
+}
+
+function simulate(){
+ init();
+
+ for(let g in table){
+   let t = table[g];
+
+   for(let i=0;i<t.length;i++){
+     for(let j=i+1;j<t.length;j++){
+       match(t[i],t[j]);
+     }
+   }
+
+   // 排名
+   t.sort((a,b)=>{
+     return b.pts - a.pts || (b.gf-b.ga)-(a.gf-a.ga);
+   });
+ }
+
+ render();
+}
+
+function render(){
+ let html = "";
+
+ for(let g in table){
+   html += `<div class="group">
+   <h2>${g}组</h2>
+   <table>
+   <tr><th>球队</th><th>分</th><th>进</th><th>失</th></tr>`;
+
+   table[g].forEach(t=>{
+     html += `<tr>
+       <td>${t.name}</td>
+       <td>${t.pts}</td>
+       <td>${t.gf}</td>
+       <td>${t.ga}</td>
+     </tr>`;
+   });
+
+   html += "</table></div>";
+ }
+
+ document.getElementById("groups").innerHTML = html;
+}
+
+init();
 
 </script>
 
