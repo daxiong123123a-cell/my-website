@@ -2,62 +2,118 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>世界杯投注系统</title>
-
+<title>世界杯投注平台</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
 body{
   margin:0;
   font-family:Arial;
-  background:#0b3d0b;
+  background:#0f172a;
   color:white;
-  text-align:center;
 }
-.nav{
-  background:black;
+
+.header{
+  background:#1e293b;
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+}
+
+.balance{
+  color:#22c55e;
+}
+
+.container{
   padding:10px;
 }
-.box{
-  margin:20px;
+
+.match{
+  background:#1e293b;
+  margin:10px 0;
+  padding:15px;
+  border-radius:10px;
 }
-button{
+
+.teams{
+  font-size:18px;
+  margin-bottom:10px;
+}
+
+.odds{
+  display:flex;
+  gap:10px;
+}
+
+.odd-btn{
+  flex:1;
+  background:#334155;
   padding:10px;
-  margin:5px;
+  border-radius:8px;
   cursor:pointer;
 }
-.match{
-  border:1px solid white;
-  margin:10px;
+
+.odd-btn:hover{
+  background:#22c55e;
+  color:black;
+}
+
+.login{
   padding:10px;
+}
+
+input{
+  padding:5px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="nav">⚽ 世界杯投注系统</div>
+<div class="header">
+  <div>⚽ 世界杯投注平台</div>
+  <div class="balance">余额: <span id="money">0</span></div>
+</div>
 
-<div class="box">
-  用户名：<input id="username">
+<div class="login">
+  用户名: <input id="username">
   <button onclick="login()">登录</button>
 </div>
 
-<div>余额：<span id="money">0</span></div>
-
-<div id="matches"></div>
+<div class="container" id="matches"></div>
 
 <script>
 
-// 🔥 填这里
 const supabaseClient = supabase.createClient(
-  "https://kdjlnfkcxrndqhrzvbzu.supabase.co",
-  "👉这里粘你的 publishable key"
+  "https://你的URL",
+  "你的KEY"
 );
 
 let currentUser = null;
 
-// 登录
+const matches = [
+  {teams:"阿根廷 vs 法国", odds:[1.5,3.2,5.0]},
+  {teams:"巴西 vs 英格兰", odds:[1.8,3.0,4.2]}
+];
+
+function render(){
+  const el = document.getElementById("matches");
+  el.innerHTML = "";
+
+  matches.forEach(m=>{
+    el.innerHTML += `
+    <div class="match">
+      <div class="teams">${m.teams}</div>
+      <div class="odds">
+        <div class="odd-btn" onclick="bet('${m.teams}','主',${m.odds[0]})">主 ${m.odds[0]}</div>
+        <div class="odd-btn" onclick="bet('${m.teams}','平',${m.odds[1]})">平 ${m.odds[1]}</div>
+        <div class="odd-btn" onclick="bet('${m.teams}','客',${m.odds[2]})">客 ${m.odds[2]}</div>
+      </div>
+    </div>
+    `;
+  });
+}
+
 async function login(){
   const username = document.getElementById("username").value;
 
@@ -70,50 +126,23 @@ async function login(){
     await supabaseClient.from("users").insert([
       { username: username, money: 1000 }
     ]);
-    alert("新用户已创建！");
-    loadUser(username);
-  }else{
-    loadUser(username);
   }
+
+  currentUser = username;
+  loadUser();
 }
 
-// 加载用户
-async function loadUser(username){
-  currentUser = username;
-
+async function loadUser(){
   let { data } = await supabaseClient
     .from("users")
     .select("*")
-    .eq("username", username)
+    .eq("username", currentUser)
     .single();
 
   document.getElementById("money").innerText = data.money;
 }
 
-// 比赛数据
-const matches = [
-  {name:"阿根廷 vs 法国"},
-  {name:"巴西 vs 英格兰"}
-];
-
-// 显示比赛
-function renderMatches(){
-  const div = document.getElementById("matches");
-  div.innerHTML = "";
-
-  matches.forEach(m=>{
-    div.innerHTML += `
-      <div class="match">
-        ${m.name}<br>
-        <button onclick="bet('${m.name}','主')">主胜</button>
-        <button onclick="bet('${m.name}','客')">客胜</button>
-      </div>
-    `;
-  });
-}
-
-// 投注
-async function bet(match, choice){
+async function bet(match, choice, odd){
   if(!currentUser){
     alert("请先登录");
     return;
@@ -132,27 +161,26 @@ async function bet(match, choice){
     return;
   }
 
-  // 扣钱
   await supabaseClient
     .from("users")
     .update({ money: user.money - amount })
     .eq("username", currentUser);
 
-  // 记录投注
   await supabaseClient.from("bets").insert([
     {
       username: currentUser,
       match: match,
       amount: amount,
-      choice: choice
+      choice: choice,
+      odd: odd
     }
   ]);
 
-  alert("下注成功！");
-  loadUser(currentUser);
+  alert("下注成功");
+  loadUser();
 }
 
-renderMatches();
+render();
 
 </script>
 
