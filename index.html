@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>世界杯商业终极版（登录+图表+真实数据）</title>
+<title>世界杯商业终极版（API+充值+后台大屏+APP）</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -10,94 +10,103 @@ body{margin:0;font-family:Arial;background:#020617;color:white;}
 .header{padding:12px;display:flex;justify-content:space-between;background:#020617;}
 .container{padding:12px;padding-bottom:100px;}
 .card{background:#0f172a;margin:10px 0;padding:14px;border-radius:12px;}
-.btn{background:#1e293b;padding:8px;border-radius:8px;margin:5px;cursor:pointer;}
+.btn{background:#1e293b;padding:8px;border-radius:8px;margin:5px;cursor:pointer;display:inline-block;}
 .tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#020617;}
 .tab{flex:1;text-align:center;padding:10px;font-size:12px;}
+.big{font-size:22px;font-weight:bold;}
 </style>
 </head>
 <body>
 
 <div class="header">
- <div>⚽ 商业平台</div>
+ <div>⚽ 商业终极平台</div>
  <div id="info">未登录</div>
 </div>
 
 <div class="container" id="app"></div>
 
 <div class="tabbar">
- <div class="tab" onclick="showPage('auth')">账号</div>
  <div class="tab" onclick="showPage('match')">比赛</div>
- <div class="tab" onclick="showPage('chart')">数据</div>
+ <div class="tab" onclick="showPage('wallet')">钱包</div>
+ <div class="tab" onclick="showPage('dashboard')">大屏</div>
 </div>
 
 <script>
 const supabase=window.supabase.createClient("https://kdjlnfkcxrndqhrzvbzu.supabase.co","sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9");
 
-let user=null;
-let profitData=[];
+let user="demo";
+let profitHistory=[];
 
-function showPage(p){
- if(p==='auth')renderAuth();
- if(p==='match')renderMatch();
- if(p==='chart')renderChart();
+/* 🌍 模拟真实API数据 */
+async function fetchMatches(){
+ return [
+  {home:"Argentina",away:"France",score:"1-0"},
+  {home:"Brazil",away:"England",score:"2-1"}
+ ];
 }
 
-/* 登录注册 */
-function renderAuth(){
- document.getElementById('app').innerHTML=`
- <div class='card'>
- 邮箱：<input id='email'><br>
- 密码：<input id='pass' type='password'><br>
- <div class='btn' onclick='register()'>注册</div>
- <div class='btn' onclick='login()'>登录</div>
- </div>`;
-}
-
-async function register(){
- let email=document.getElementById('email').value;
- let pass=document.getElementById('pass').value;
- await supabase.auth.signUp({email,password:pass});
- alert('注册成功');
-}
-
-async function login(){
- let email=document.getElementById('email').value;
- let pass=document.getElementById('pass').value;
- let {data}=await supabase.auth.signInWithPassword({email,password:pass});
- user=data.user;
- document.getElementById('info').innerText=email;
-}
-
-/* 比赛（模拟真实API结构） */
-let matches=[
- {home:'Argentina',away:'France',score:'1-0'},
- {home:'Brazil',away:'England',score:'0-0'}
-];
-
-function renderMatch(){
+async function renderMatch(){
+ let data=await fetchMatches();
  let html="";
- matches.forEach(m=>{
+ data.forEach(m=>{
   html+=`<div class='card'>${m.home} vs ${m.away}<br>${m.score}</div>`;
  });
  document.getElementById('app').innerHTML=html;
 }
 
-/* 图表（真实后台样式） */
-function renderChart(){
- document.getElementById('app').innerHTML=`<canvas id='chart'></canvas>`;
+/* 💰 钱包 */
+async function renderWallet(){
+ let html=`<div class='card'>
+ <div class='big'>余额：<span id='money'>0</span></div>
+ <div class='btn' onclick='deposit()'>充值 +1000</div>
+ <div class='btn' onclick='withdraw()'>提现 -500</div>
+ </div>`;
+ document.getElementById('app').innerHTML=html;
+ loadMoney();
+}
+
+async function loadMoney(){
+ let {data}=await supabase.from('users').select('*').eq('username',user).single();
+ document.getElementById('money').innerText=data?.money||0;
+}
+
+async function deposit(){
+ let {data}=await supabase.from('users').select('*').eq('username',user).single();
+ await supabase.from('users').update({money:data.money+1000}).eq('username',user);
+ loadMoney();
+}
+
+async function withdraw(){
+ let {data}=await supabase.from('users').select('*').eq('username',user).single();
+ if(data.money<500) return alert('余额不足');
+ await supabase.from('users').update({money:data.money-500}).eq('username',user);
+ loadMoney();
+}
+
+/* 📊 后台大屏 */
+function renderDashboard(){
+ document.getElementById('app').innerHTML=`
+ <div class='card big'>📊 平台大屏</div>
+ <canvas id='chart'></canvas>
+ `;
  let ctx=document.getElementById('chart');
  new Chart(ctx,{
   type:'line',
-  data:{labels:profitData.map((_,i)=>i),datasets:[{label:'盈利',data:profitData}]}
+  data:{labels:profitHistory.map((_,i)=>i),datasets:[{label:'盈利',data:profitHistory}]}
  });
 }
 
-/* 模拟盈利变化 */
 setInterval(()=>{
- profitData.push(Math.floor(Math.random()*200));
+ profitHistory.push(Math.floor(Math.random()*500));
 },3000);
 
-showPage('auth');
+function showPage(p){
+ if(p==='match')renderMatch();
+ if(p==='wallet')renderWallet();
+ if(p==='dashboard')renderDashboard();
+}
+
+showPage('match');
 </script>
 
 </body>
