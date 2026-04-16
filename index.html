@@ -2,200 +2,162 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>球员卡片阵容（终极UI版）</title>
+<title>世界杯投注平台（真实数据版）</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-body {
- margin:0;
- font-family:-apple-system,BlinkMacSystemFont;
- background:linear-gradient(180deg,#061a12,#020617);
- color:white;
-}
+body{margin:0;font-family:Arial;background:#020617;color:white;}
+.header{padding:12px;display:flex;justify-content:space-between;background:#020617;border-bottom:1px solid #1e293b;}
+.balance{color:#22c55e;}
+.container{padding:12px;padding-bottom:90px;}
+.card{background:#0f172a;margin:10px 0;padding:14px;border-radius:14px;}
+.odds{display:flex;gap:10px;margin-top:10px;}
+.btn{flex:1;background:#1e293b;padding:12px;border-radius:10px;text-align:center;cursor:pointer;transition:0.2s;}
+.btn:hover{background:#22c55e;color:black;}
+.tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#020617;border-top:1px solid #1e293b;}
+.tab{flex:1;text-align:center;padding:10px;font-size:12px;}
+.live{color:#ef4444;font-weight:bold;}
 
-.nav {
- background:rgba(0,0,0,0.6);
- backdrop-filter:blur(10px);
- padding:12px;
- text-align:center;
- font-size:18px;
- font-weight:bold;
-}
-
-.select {
- cursor:pointer;
- padding:12px;
- display:flex;
- align-items:center;
- gap:10px;
- border-bottom:1px solid #1e293b;
- transition:0.2s;
-}
-
-.select:hover{
- background:#0f172a;
-}
-
-img.flag { width:26px; border-radius:50%; }
-
-.pitch {
- position:relative;
- width:360px;
- height:520px;
- margin:20px auto;
- border-radius:20px;
- background:radial-gradient(circle at center,#0a5c0a,#063b06);
- box-shadow:0 20px 50px rgba(0,0,0,0.8);
- overflow:hidden;
-}
-
-.pitch::after{
- content:"";
- position:absolute;
- width:200px;
- height:200px;
- border:2px solid rgba(255,255,255,0.2);
- border-radius:50%;
- top:50%;left:50%;transform:translate(-50%,-50%);
-}
-
-.card-wrap {
- position:absolute;
- transform:translate(-50%,-50%);
- width:85px;
- height:115px;
- perspective:800px;
-}
-
-.card {
- width:100%; height:100%; position:relative;
- transform-style:preserve-3d;
- transition:transform 0.6s;
-}
-
-.card.flip { transform:rotateY(180deg); }
-
-.card-face {
- position:absolute; width:100%; height:100%;
- backface-visibility:hidden;
- border-radius:14px;
- padding:6px;
- box-sizing:border-box;
-}
-
-.front {
- background:linear-gradient(145deg,#111,#1e293b);
- text-align:center;
- box-shadow:0 0 15px rgba(0,255,200,0.7);
-}
-
-.back {
- background:#020617;
- transform:rotateY(180deg);
- font-size:11px;
-}
-
-.card img {
- width:46px; height:46px;
- border-radius:50%;
- border:2px solid #22c55e;
- margin-top:4px;
-}
-
-.name { font-size:11px;margin-top:3px; }
-
-.rating {
- font-size:14px;
- color:#22c55e;
- font-weight:bold;
-}
-
-.stat {
- margin:2px 0;
-}
-
-/* 动画 */
-.card-wrap:hover{
- transform:translate(-50%,-50%) scale(1.1);
-}
-
+.modal{position:fixed;bottom:0;left:0;width:100%;background:#0f172a;border-radius:20px 20px 0 0;padding:20px;display:none;}
+.amounts{display:flex;gap:10px;margin:10px 0;}
+.amounts div{flex:1;background:#1e293b;padding:10px;text-align:center;border-radius:8px;cursor:pointer;}
+.confirm{background:#22c55e;color:black;padding:12px;text-align:center;border-radius:10px;margin-top:10px;cursor:pointer;}
 </style>
 </head>
+
 <body>
 
-<div class="nav">⚽ 球员阵容（高级卡片版）</div>
+<div class="header">
+  <div>⚽ 实时比赛</div>
+  <div class="balance">💰<span id="money">0</span></div>
+</div>
 
-<div id="teamSelect"></div>
-<div id="pitch"></div>
+<div class="container" id="app"></div>
+
+<div class="tabbar">
+  <div class="tab" onclick="showPage('home')">比赛</div>
+  <div class="tab" onclick="showPage('rank')">排行</div>
+  <div class="tab" onclick="showPage('record')">记录</div>
+  <div class="tab" onclick="showPage('user')">我的</div>
+</div>
+
+<div class="modal" id="betModal">
+ <h3 id="betTitle"></h3>
+ <div class="amounts">
+  <div onclick="selectAmount(100)">100</div>
+  <div onclick="selectAmount(500)">500</div>
+  <div onclick="selectAmount(1000)">1000</div>
+ </div>
+ <div class="confirm" onclick="confirmBet()">确认下注</div>
+</div>
 
 <script>
-const flagMap = { '阿根廷':'ar','法国':'fr' };
-function flag(name){ return `https://flagcdn.com/w40/${flagMap[name]}.png`; }
+const SUPABASE_URL = "https://kdjlnfkcxrndqhrzvbzu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9";
 
-function avatar(name){
- return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=22c55e&color=000`;
-}
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const formations = {
- '阿根廷':[
-  {name:'马丁内斯',rating:85,x:50,y:90,stats:{扑救:88,反应:85}},
-  {name:'莫利纳',rating:80,x:20,y:70,stats:{速度:82,防守:78}},
-  {name:'罗梅罗',rating:85,x:40,y:70,stats:{防守:88,力量:85}},
-  {name:'奥塔门迪',rating:84,x:60,y:70,stats:{防守:86,头球:87}},
-  {name:'塔利亚菲科',rating:82,x:80,y:70,stats:{速度:80,防守:82}},
-  {name:'德保罗',rating:84,x:30,y:50,stats:{传球:85,体力:88}},
-  {name:'恩佐',rating:86,x:50,y:50,stats:{传球:88,控球:86}},
-  {name:'麦卡利斯特',rating:85,x:70,y:50,stats:{射门:83,传球:86}},
-  {name:'迪马利亚',rating:88,x:20,y:25,stats:{速度:90,突破:88}},
-  {name:'梅西',rating:93,x:50,y:20,stats:{射门:95,传球:94}},
-  {name:'劳塔罗',rating:87,x:80,y:25,stats:{射门:89,跑位:86}}
- ],
- '法国':[
-  {name:'洛里',rating:87,x:50,y:90,stats:{扑救:90,反应:88}},
-  {name:'孔德',rating:83,x:20,y:70,stats:{速度:85,防守:82}},
-  {name:'瓦拉内',rating:86,x:40,y:70,stats:{防守:88,速度:84}},
-  {name:'于帕',rating:84,x:60,y:70,stats:{力量:90,防守:83}},
-  {name:'特奥',rating:85,x:80,y:70,stats:{速度:92,进攻:85}},
-  {name:'琼阿梅尼',rating:86,x:30,y:50,stats:{防守:88,传球:85}},
-  {name:'拉比奥',rating:84,x:50,y:50,stats:{体力:88,控球:84}},
-  {name:'格列兹曼',rating:88,x:70,y:50,stats:{传球:90,射门:86}},
-  {name:'姆巴佩',rating:92,x:20,y:25,stats:{速度:99,射门:91}},
-  {name:'吉鲁',rating:85,x:50,y:20,stats:{头球:92,射门:88}},
-  {name:'登贝莱',rating:86,x:80,y:25,stats:{速度:95,突破:88}}
- ]
-};
+let user=null;
+let currentBet=null;
+let matches=[];
 
-function renderSelect(){
- let html='';
- Object.keys(formations).forEach(t=>{
-  html+=`<div class='select' onclick="showTeam('${t}')"><img class='flag' src='${flag(t)}'> ${t}</div>`;
+async function loadMatches(){
+ let res = await fetch("https://api.football-data.org/v4/matches",{
+  headers:{"X-Auth-Token":"e277c86671ab49eda6a7396988490887"}
  });
- document.getElementById('teamSelect').innerHTML=html;
+ let data = await res.json();
+ matches = (data.matches||[]).slice(0,10);
+ renderHome();
 }
 
-function showTeam(name){
- let players = formations[name];
- let html = `<div class='pitch'>`;
- players.forEach((p)=>{
-  html+=`<div class='card-wrap' style='left:${p.x}%;top:${p.y}%;'>
-    <div class='card' onclick='flipCard(this)'>
-      <div class='card-face front'>
-        <div class='rating'>${p.rating}</div>
-        <img src='${avatar(p.name)}'>
-        <div class='name'>${p.name}</div>
-      </div>
-      <div class='card-face back'>
-        <div>${p.name}</div>
-        ${Object.entries(p.stats).map(s=>`<div class='stat'>${s[0]}: ${s[1]}</div>`).join('')}
-      </div>
+function showPage(p){
+ if(p==='home')renderHome();
+ if(p==='rank')renderRank();
+ if(p==='record')renderRecord();
+ if(p==='user')renderUser();
+}
+
+function renderHome(){
+ let html="";
+ matches.forEach((m,i)=>{
+  let home=m.homeTeam.name;
+  let away=m.awayTeam.name;
+  let score = m.score.fullTime.home!==null ? `${m.score.fullTime.home}-${m.score.fullTime.away}` : "VS";
+  let status = m.status==='LIVE'?'<span class="live">LIVE</span>':m.status;
+
+  let odd1=(1.5+Math.random()).toFixed(2);
+  let odd2=(1.5+Math.random()).toFixed(2);
+
+  html+=`<div class='card'>
+    <div>${home} vs ${away}</div>
+    <div>${score} ${status}</div>
+    <div class='odds'>
+      <div class='btn' onclick="openBet(${i},'主胜',${odd1})">主 ${odd1}</div>
+      <div class='btn' onclick="openBet(${i},'客胜',${odd2})">客 ${odd2}</div>
     </div>
   </div>`;
  });
- html+='</div>';
- document.getElementById('pitch').innerHTML=html;
+ document.getElementById('app').innerHTML=html;
 }
 
-function flipCard(el){ el.classList.toggle('flip'); }
+function openBet(i,choice,odd){
+ if(!user) return alert('请先登录');
+ currentBet={i,choice,odd,amount:0};
+ document.getElementById('betTitle').innerText=choice+" @"+odd;
+ document.getElementById('betModal').style.display='block';
+}
 
-renderSelect();
+function selectAmount(a){currentBet.amount=a;}
+
+async function confirmBet(){
+ let {data:u}=await supabaseClient.from('users').select('*').eq('username',user).single();
+ if(u.money<currentBet.amount) return alert('余额不足');
+
+ await supabaseClient.from('users').update({money:u.money-currentBet.amount}).eq('username',user);
+ await supabaseClient.from('bets').insert([{
+  username:user,
+  match:matches[currentBet.i].homeTeam.name+" vs "+matches[currentBet.i].awayTeam.name,
+  choice:currentBet.choice,
+  odd:currentBet.odd,
+  amount:currentBet.amount
+ }]);
+
+ document.getElementById('betModal').style.display='none';
+ loadUser();
+}
+
+async function loadUser(){
+ let {data}=await supabaseClient.from('users').select('*').eq('username',user).single();
+ document.getElementById('money').innerText=data?.money||0;
+}
+
+async function renderRank(){
+ let {data}=await supabaseClient.from('users').select('*').order('money',{ascending:false});
+ let html="<div class='card'>排行榜</div>";
+ (data||[]).forEach((u,i)=> html+=`<div class='card'>${i+1}. ${u.username} 💰${u.money}</div>`);
+ document.getElementById('app').innerHTML=html;
+}
+
+async function renderRecord(){
+ let {data}=await supabaseClient.from('bets').select('*').eq('username',user);
+ let html="";
+ (data||[]).forEach(b=> html+=`<div class='card'>${b.match} ${b.choice} ￥${b.amount}</div>`);
+ document.getElementById('app').innerHTML=html;
+}
+
+function renderUser(){
+ document.getElementById('app').innerHTML=`用户名:<input id='u'><button onclick='login()'>登录</button>`;
+}
+
+async function login(){
+ let name=document.getElementById('u').value;
+ let {data}=await supabaseClient.from('users').select('*').eq('username',name);
+ if(!data||data.length===0){await supabaseClient.from('users').insert([{username:name,money:1000}]);}
+ user=name;loadUser();alert('登录成功');
+}
+
+loadMatches();
+showPage('home');
 </script>
 
 </body>
