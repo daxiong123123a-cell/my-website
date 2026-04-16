@@ -2,8 +2,9 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>世界杯投注平台（真实数据版）</title>
+<title>商业版投注平台🔥</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:white;}
@@ -17,18 +18,17 @@ body{margin:0;font-family:Arial;background:#020617;color:white;}
 .tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#020617;border-top:1px solid #1e293b;}
 .tab{flex:1;text-align:center;padding:10px;font-size:12px;}
 .live{color:#ef4444;font-weight:bold;}
-
-.modal{position:fixed;bottom:0;left:0;width:100%;background:#0f172a;border-radius:20px 20px 0 0;padding:20px;display:none;}
-.amounts{display:flex;gap:10px;margin:10px 0;}
-.amounts div{flex:1;background:#1e293b;padding:10px;text-align:center;border-radius:8px;cursor:pointer;}
-.confirm{background:#22c55e;color:black;padding:12px;text-align:center;border-radius:10px;margin-top:10px;cursor:pointer;}
+.up{color:#22c55e;}
+.down{color:#ef4444;}
+.modal{position:fixed;bottom:0;width:100%;background:#0f172a;padding:20px;display:none;border-radius:20px 20px 0 0;}
+input{padding:8px;margin:5px;width:90%;}
+button{padding:10px;background:#22c55e;border:none;border-radius:8px;}
 </style>
 </head>
 
 <body>
-
 <div class="header">
-  <div>⚽ 实时比赛</div>
+  <div>🔥 商业投注平台</div>
   <div class="balance">💰<span id="money">0</span></div>
 </div>
 
@@ -37,123 +37,133 @@ body{margin:0;font-family:Arial;background:#020617;color:white;}
 <div class="tabbar">
   <div class="tab" onclick="showPage('home')">比赛</div>
   <div class="tab" onclick="showPage('rank')">排行</div>
-  <div class="tab" onclick="showPage('record')">记录</div>
+  <div class="tab" onclick="showPage('chart')">数据</div>
   <div class="tab" onclick="showPage('user')">我的</div>
 </div>
 
 <div class="modal" id="betModal">
  <h3 id="betTitle"></h3>
- <div class="amounts">
-  <div onclick="selectAmount(100)">100</div>
-  <div onclick="selectAmount(500)">500</div>
-  <div onclick="selectAmount(1000)">1000</div>
- </div>
- <div class="confirm" onclick="confirmBet()">确认下注</div>
+ <input id="betAmount" placeholder="输入金额">
+ <button onclick="confirmBet()">确认下注</button>
 </div>
 
 <script>
-const SUPABASE_URL = "https://kdjlnfkcxrndqhrzvbzu.supabase.co";
-const SUPABASE_KEY = "sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9";
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL="https://kdjlnfkcxrndqhrzvbzu.supabase.co";
+const SUPABASE_KEY="sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9";
+const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let user=null;
-let currentBet=null;
 let matches=[];
+let oddsCache={};
 
 async function loadMatches(){
- let res = await fetch("https://api.football-data.org/v4/matches",{
-  headers:{"X-Auth-Token":"e277c86671ab49eda6a7396988490887"}
+ let res=await fetch("https://api.football-data.org/v4/matches",{
+ headers:{"X-Auth-Token":"e277c86671ab49eda6a7396988490887"}
  });
- let data = await res.json();
- matches = (data.matches||[]).slice(0,10);
+ let data=await res.json();
+ matches=(data.matches||[]).slice(0,10);
  renderHome();
+}
+
+function randOdd(){return (1.5+Math.random()).toFixed(2);} 
+
+function renderHome(){
+ let html="";
+ matches.forEach((m,i)=>{
+ let key=i;
+ if(!oddsCache[key]) oddsCache[key]={home:randOdd(),away:randOdd()};
+ let old=oddsCache[key];
+ let newHome=randOdd();
+ let newAway=randOdd();
+ let homeClass=newHome>old.home?'up':'down';
+ let awayClass=newAway>old.away?'up':'down';
+ oddsCache[key]={home:newHome,away:newAway};
+
+ html+=`<div class='card'>
+ <div>${m.homeTeam.name} vs ${m.awayTeam.name}</div>
+ <div>${m.status==='LIVE'?'<span class="live">LIVE</span>':m.status}</div>
+ <div class='odds'>
+ <div class='btn ${homeClass}' onclick="openBet(${i},'主胜',${newHome})">${newHome}</div>
+ <div class='btn ${awayClass}' onclick="openBet(${i},'客胜',${newAway})">${newAway}</div>
+ </div>
+ </div>`;
+ });
+ document.getElementById('app').innerHTML=html;
+}
+
+setInterval(renderHome,3000);
+
+function openBet(i,type,odd){
+ if(!user) return alert('先登录');
+ window.bet={i,type,odd};
+ document.getElementById('betTitle').innerText=type+" @"+odd;
+ document.getElementById('betModal').style.display='block';
+}
+
+async function confirmBet(){
+ let amt=parseInt(document.getElementById('betAmount').value);
+ let {data:u}=await supabase.from('users').select('*').eq('username',user).single();
+ if(u.money<amt) return alert('余额不足');
+ await supabase.from('users').update({money:u.money-amt}).eq('username',user);
+ await supabase.from('bets').insert([{username:user,amount:amt,choice:bet.type,odd:bet.odd,status:'未开奖'}]);
+ loadUser();
+ alert('下注成功');
+}
+
+async function loadUser(){
+ let {data}=await supabase.from('users').select('*').eq('username',user).single();
+ document.getElementById('money').innerText=data.money;
+}
+
+async function renderRank(){
+ let {data}=await supabase.from('users').select('*').order('money',{ascending:false});
+ let html="排行榜";
+ data.forEach(u=> html+=`<div class='card'>${u.username} 💰${u.money}</div>`);
+ document.getElementById('app').innerHTML=html;
+}
+
+function renderChart(){
+ document.getElementById('app').innerHTML="<canvas id='c'></canvas>";
+ new Chart(document.getElementById('c'),{
+ type:'line',
+ data:{labels:['1','2','3','4'],datasets:[{data:[10,20,15,30]}]}
+ });
+}
+
+function renderUser(){
+ document.getElementById('app').innerHTML=`
+ <input id='u' placeholder='用户名'>
+ <button onclick='login()'>登录</button>
+ <button onclick='deposit()'>充值1000</button>
+ <button onclick='withdraw()'>提现500</button>
+ `;
+}
+
+async function login(){
+ let name=document.getElementById('u').value;
+ let {data}=await supabase.from('users').select('*').eq('username',name);
+ if(!data.length) await supabase.from('users').insert([{username:name,money:1000}]);
+ user=name;loadUser();alert('登录成功');
+}
+
+async function deposit(){
+ let {data:u}=await supabase.from('users').select('*').eq('username',user).single();
+ await supabase.from('users').update({money:u.money+1000}).eq('username',user);
+ loadUser();
+}
+
+async function withdraw(){
+ let {data:u}=await supabase.from('users').select('*').eq('username',user).single();
+ if(u.money<500) return alert('余额不足');
+ await supabase.from('users').update({money:u.money-500}).eq('username',user);
+ loadUser();
 }
 
 function showPage(p){
  if(p==='home')renderHome();
  if(p==='rank')renderRank();
- if(p==='record')renderRecord();
+ if(p==='chart')renderChart();
  if(p==='user')renderUser();
-}
-
-function renderHome(){
- let html="";
- matches.forEach((m,i)=>{
-  let home=m.homeTeam.name;
-  let away=m.awayTeam.name;
-  let score = m.score.fullTime.home!==null ? `${m.score.fullTime.home}-${m.score.fullTime.away}` : "VS";
-  let status = m.status==='LIVE'?'<span class="live">LIVE</span>':m.status;
-
-  let odd1=(1.5+Math.random()).toFixed(2);
-  let odd2=(1.5+Math.random()).toFixed(2);
-
-  html+=`<div class='card'>
-    <div>${home} vs ${away}</div>
-    <div>${score} ${status}</div>
-    <div class='odds'>
-      <div class='btn' onclick="openBet(${i},'主胜',${odd1})">主 ${odd1}</div>
-      <div class='btn' onclick="openBet(${i},'客胜',${odd2})">客 ${odd2}</div>
-    </div>
-  </div>`;
- });
- document.getElementById('app').innerHTML=html;
-}
-
-function openBet(i,choice,odd){
- if(!user) return alert('请先登录');
- currentBet={i,choice,odd,amount:0};
- document.getElementById('betTitle').innerText=choice+" @"+odd;
- document.getElementById('betModal').style.display='block';
-}
-
-function selectAmount(a){currentBet.amount=a;}
-
-async function confirmBet(){
- let {data:u}=await supabaseClient.from('users').select('*').eq('username',user).single();
- if(u.money<currentBet.amount) return alert('余额不足');
-
- await supabaseClient.from('users').update({money:u.money-currentBet.amount}).eq('username',user);
- await supabaseClient.from('bets').insert([{
-  username:user,
-  match:matches[currentBet.i].homeTeam.name+" vs "+matches[currentBet.i].awayTeam.name,
-  choice:currentBet.choice,
-  odd:currentBet.odd,
-  amount:currentBet.amount
- }]);
-
- document.getElementById('betModal').style.display='none';
- loadUser();
-}
-
-async function loadUser(){
- let {data}=await supabaseClient.from('users').select('*').eq('username',user).single();
- document.getElementById('money').innerText=data?.money||0;
-}
-
-async function renderRank(){
- let {data}=await supabaseClient.from('users').select('*').order('money',{ascending:false});
- let html="<div class='card'>排行榜</div>";
- (data||[]).forEach((u,i)=> html+=`<div class='card'>${i+1}. ${u.username} 💰${u.money}</div>`);
- document.getElementById('app').innerHTML=html;
-}
-
-async function renderRecord(){
- let {data}=await supabaseClient.from('bets').select('*').eq('username',user);
- let html="";
- (data||[]).forEach(b=> html+=`<div class='card'>${b.match} ${b.choice} ￥${b.amount}</div>`);
- document.getElementById('app').innerHTML=html;
-}
-
-function renderUser(){
- document.getElementById('app').innerHTML=`用户名:<input id='u'><button onclick='login()'>登录</button>`;
-}
-
-async function login(){
- let name=document.getElementById('u').value;
- let {data}=await supabaseClient.from('users').select('*').eq('username',name);
- if(!data||data.length===0){await supabaseClient.from('users').insert([{username:name,money:1000}]);}
- user=name;loadUser();alert('登录成功');
 }
 
 loadMatches();
