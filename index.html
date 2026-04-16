@@ -2,137 +2,200 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>WorldCup Pro（Bet365风格终极UI）</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>球员卡片阵容（终极UI版）</title>
 <style>
-body{margin:0;font-family:-apple-system;background:#061a12;color:white;}
-.header{padding:12px;display:flex;justify-content:space-between;background:#0b2e20;font-weight:bold;}
-.container{padding:10px;padding-bottom:100px;}
-.banner{background:#0b2e20;padding:12px;border-radius:10px;margin-bottom:10px;}
-.card{background:#0e3b2a;margin:10px 0;padding:12px;border-radius:10px;}
-.match{display:flex;justify-content:space-between;align-items:center;}
-.team{font-size:14px;}
-.score{font-size:18px;color:#22c55e;}
-.market{display:flex;gap:8px;margin-top:8px;}
-.bet-btn{flex:1;background:#123f2c;padding:10px;border-radius:8px;text-align:center;cursor:pointer;position:relative;}
-.bet-btn span{display:block;font-size:12px;}
-.up{color:#22c55e;animation:flashUp 0.5s;}
-.down{color:#ef4444;animation:flashDown 0.5s;}
-@keyframes flashUp{from{background:#22c55e;}to{background:#123f2c;}}
-@keyframes flashDown{from{background:#ef4444;}to{background:#123f2c;}}
-.tabbar{position:fixed;bottom:0;width:100%;display:flex;background:#0b2e20;}
-.tab{flex:1;text-align:center;padding:10px;font-size:12px;}
-.modal{position:fixed;bottom:-100%;left:0;width:100%;background:#0e3b2a;padding:20px;border-radius:20px 20px 0 0;transition:0.3s;}
-.modal.show{bottom:0;}
-.amounts{display:flex;gap:10px;margin-top:10px;}
-.amount{flex:1;background:#123f2c;padding:10px;text-align:center;border-radius:8px;cursor:pointer;}
-.confirm{margin-top:10px;background:#22c55e;color:black;padding:12px;text-align:center;border-radius:10px;cursor:pointer;}
-.ticker{position:fixed;top:45px;width:100%;background:#123f2c;font-size:12px;padding:5px;white-space:nowrap;overflow:hidden;}
+body {
+ margin:0;
+ font-family:-apple-system,BlinkMacSystemFont;
+ background:linear-gradient(180deg,#061a12,#020617);
+ color:white;
+}
+
+.nav {
+ background:rgba(0,0,0,0.6);
+ backdrop-filter:blur(10px);
+ padding:12px;
+ text-align:center;
+ font-size:18px;
+ font-weight:bold;
+}
+
+.select {
+ cursor:pointer;
+ padding:12px;
+ display:flex;
+ align-items:center;
+ gap:10px;
+ border-bottom:1px solid #1e293b;
+ transition:0.2s;
+}
+
+.select:hover{
+ background:#0f172a;
+}
+
+img.flag { width:26px; border-radius:50%; }
+
+.pitch {
+ position:relative;
+ width:360px;
+ height:520px;
+ margin:20px auto;
+ border-radius:20px;
+ background:radial-gradient(circle at center,#0a5c0a,#063b06);
+ box-shadow:0 20px 50px rgba(0,0,0,0.8);
+ overflow:hidden;
+}
+
+.pitch::after{
+ content:"";
+ position:absolute;
+ width:200px;
+ height:200px;
+ border:2px solid rgba(255,255,255,0.2);
+ border-radius:50%;
+ top:50%;left:50%;transform:translate(-50%,-50%);
+}
+
+.card-wrap {
+ position:absolute;
+ transform:translate(-50%,-50%);
+ width:85px;
+ height:115px;
+ perspective:800px;
+}
+
+.card {
+ width:100%; height:100%; position:relative;
+ transform-style:preserve-3d;
+ transition:transform 0.6s;
+}
+
+.card.flip { transform:rotateY(180deg); }
+
+.card-face {
+ position:absolute; width:100%; height:100%;
+ backface-visibility:hidden;
+ border-radius:14px;
+ padding:6px;
+ box-sizing:border-box;
+}
+
+.front {
+ background:linear-gradient(145deg,#111,#1e293b);
+ text-align:center;
+ box-shadow:0 0 15px rgba(0,255,200,0.7);
+}
+
+.back {
+ background:#020617;
+ transform:rotateY(180deg);
+ font-size:11px;
+}
+
+.card img {
+ width:46px; height:46px;
+ border-radius:50%;
+ border:2px solid #22c55e;
+ margin-top:4px;
+}
+
+.name { font-size:11px;margin-top:3px; }
+
+.rating {
+ font-size:14px;
+ color:#22c55e;
+ font-weight:bold;
+}
+
+.stat {
+ margin:2px 0;
+}
+
+/* 动画 */
+.card-wrap:hover{
+ transform:translate(-50%,-50%) scale(1.1);
+}
+
 </style>
 </head>
 <body>
 
-<div class="header">
- <div>⚽ Bet365风格</div>
- <div>💰<span id="money">0</span></div>
-</div>
+<div class="nav">⚽ 球员阵容（高级卡片版）</div>
 
-<div class="ticker" id="ticker"></div>
-
-<div class="container" id="app"></div>
-
-<div class="tabbar">
- <div class="tab" onclick="renderHome()">比赛</div>
- <div class="tab" onclick="renderWallet()">钱包</div>
-</div>
-
-<div class="modal" id="betModal">
- <div id="betInfo"></div>
- <div class="amounts">
-  <div class="amount" onclick="setAmount(100)">100</div>
-  <div class="amount" onclick="setAmount(500)">500</div>
-  <div class="amount" onclick="setAmount(1000)">1000</div>
- </div>
- <div class="confirm" onclick="confirmBet()">确认下注</div>
-</div>
+<div id="teamSelect"></div>
+<div id="pitch"></div>
 
 <script>
-const supabase=window.supabase.createClient("https://kdjlnfkcxrndqhrzvbzu.supabase.co","sb_publishable_lS31kXPSB0gs103wQPjlYQ_ta8iFZi9");
-let user="demo";
-let currentBet=null;
+const flagMap = { '阿根廷':'ar','法国':'fr' };
+function flag(name){ return `https://flagcdn.com/w40/${flagMap[name]}.png`; }
 
-let matches=[
- {teams:"阿根廷 vs 法国",score:"1-0",odds:{home:1.8,away:2.0}},
- {teams:"巴西 vs 英格兰",score:"2-1",odds:{home:1.6,away:2.3}}
-];
+function avatar(name){
+ return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=22c55e&color=000`;
+}
 
-function renderHome(){
- let html="";
- matches.forEach((m,i)=>{
-  html+=`<div class='card'>
-   <div class='match'>
-    <div class='team'>${m.teams}</div>
-    <div class='score'>${m.score}</div>
-   </div>
-   <div class='market'>
-    <div class='bet-btn' onclick="openBet(${i},'主胜',${m.odds.home})"><span>主</span>${m.odds.home}</div>
-    <div class='bet-btn' onclick="openBet(${i},'客胜',${m.odds.away})"><span>客</span>${m.odds.away}</div>
-   </div>
+const formations = {
+ '阿根廷':[
+  {name:'马丁内斯',rating:85,x:50,y:90,stats:{扑救:88,反应:85}},
+  {name:'莫利纳',rating:80,x:20,y:70,stats:{速度:82,防守:78}},
+  {name:'罗梅罗',rating:85,x:40,y:70,stats:{防守:88,力量:85}},
+  {name:'奥塔门迪',rating:84,x:60,y:70,stats:{防守:86,头球:87}},
+  {name:'塔利亚菲科',rating:82,x:80,y:70,stats:{速度:80,防守:82}},
+  {name:'德保罗',rating:84,x:30,y:50,stats:{传球:85,体力:88}},
+  {name:'恩佐',rating:86,x:50,y:50,stats:{传球:88,控球:86}},
+  {name:'麦卡利斯特',rating:85,x:70,y:50,stats:{射门:83,传球:86}},
+  {name:'迪马利亚',rating:88,x:20,y:25,stats:{速度:90,突破:88}},
+  {name:'梅西',rating:93,x:50,y:20,stats:{射门:95,传球:94}},
+  {name:'劳塔罗',rating:87,x:80,y:25,stats:{射门:89,跑位:86}}
+ ],
+ '法国':[
+  {name:'洛里',rating:87,x:50,y:90,stats:{扑救:90,反应:88}},
+  {name:'孔德',rating:83,x:20,y:70,stats:{速度:85,防守:82}},
+  {name:'瓦拉内',rating:86,x:40,y:70,stats:{防守:88,速度:84}},
+  {name:'于帕',rating:84,x:60,y:70,stats:{力量:90,防守:83}},
+  {name:'特奥',rating:85,x:80,y:70,stats:{速度:92,进攻:85}},
+  {name:'琼阿梅尼',rating:86,x:30,y:50,stats:{防守:88,传球:85}},
+  {name:'拉比奥',rating:84,x:50,y:50,stats:{体力:88,控球:84}},
+  {name:'格列兹曼',rating:88,x:70,y:50,stats:{传球:90,射门:86}},
+  {name:'姆巴佩',rating:92,x:20,y:25,stats:{速度:99,射门:91}},
+  {name:'吉鲁',rating:85,x:50,y:20,stats:{头球:92,射门:88}},
+  {name:'登贝莱',rating:86,x:80,y:25,stats:{速度:95,突破:88}}
+ ]
+};
+
+function renderSelect(){
+ let html='';
+ Object.keys(formations).forEach(t=>{
+  html+=`<div class='select' onclick="showTeam('${t}')"><img class='flag' src='${flag(t)}'> ${t}</div>`;
+ });
+ document.getElementById('teamSelect').innerHTML=html;
+}
+
+function showTeam(name){
+ let players = formations[name];
+ let html = `<div class='pitch'>`;
+ players.forEach((p)=>{
+  html+=`<div class='card-wrap' style='left:${p.x}%;top:${p.y}%;'>
+    <div class='card' onclick='flipCard(this)'>
+      <div class='card-face front'>
+        <div class='rating'>${p.rating}</div>
+        <img src='${avatar(p.name)}'>
+        <div class='name'>${p.name}</div>
+      </div>
+      <div class='card-face back'>
+        <div>${p.name}</div>
+        ${Object.entries(p.stats).map(s=>`<div class='stat'>${s[0]}: ${s[1]}</div>`).join('')}
+      </div>
+    </div>
   </div>`;
  });
- document.getElementById('app').innerHTML=html;
+ html+='</div>';
+ document.getElementById('pitch').innerHTML=html;
 }
 
-function openBet(i,c,o){
- currentBet={i,c,o,a:0};
- document.getElementById('betInfo').innerText=c+" @"+o;
- document.getElementById('betModal').classList.add('show');
-}
+function flipCard(el){ el.classList.toggle('flip'); }
 
-function setAmount(a){currentBet.a=a;}
-
-async function confirmBet(){
- if(!currentBet.a)return alert('选金额');
- let {data:u}=await supabase.from('users').select('*').eq('username',user).single();
- if(u.money<currentBet.a)return alert('余额不足');
- await supabase.from('users').update({money:u.money-currentBet.a}).eq('username',user);
- await supabase.from('bets').insert([{username:user,match:matches[currentBet.i].teams,choice:currentBet.c,odd:currentBet.o,amount:currentBet.a,status:'未开奖'}]);
- document.getElementById('betModal').classList.remove('show');
- loadMoney();
-}
-
-async function renderWallet(){
- let {data}=await supabase.from('users').select('*').eq('username',user).single();
- document.getElementById('app').innerHTML=`<div class='card'>余额：${data.money}</div>`;
-}
-
-async function loadMoney(){
- let {data}=await supabase.from('users').select('*').eq('username',user).single();
- document.getElementById('money').innerText=data.money;
-}
-
-/* 赔率跳动 */
-setInterval(()=>{
- matches.forEach(m=>{
-  let old=m.odds.home;
-  let n=(+old+(Math.random()-0.5)*0.2).toFixed(2);
-  m.odds.home=n;
- });
- renderHome();
-},2000);
-
-/* 滚动下注 */
-setInterval(()=>{
- let arr=["VIP","玩家A","大神"];
- let txt="";
- for(let i=0;i<5;i++){
-  txt+=arr[Math.floor(Math.random()*arr.length)]+"下注"+[100,500,1000][Math.floor(Math.random()*3)]+" ";
- }
- document.getElementById('ticker').innerText=txt;
-},2000);
-
-loadMoney();
-renderHome();
+renderSelect();
 </script>
 
 </body>
